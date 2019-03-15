@@ -5,7 +5,7 @@
  * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.26.6
+ * Version   2.26.8
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -26,45 +26,48 @@
  *           along with iCalcreator. If not, see <https://www.gnu.org/licenses/>.
  *
  * This file is a part of iCalcreator.
- */
+*/
+
+namespace Kigkonsult\Icalcreator\Util;
+
+use function abs;
+use function sprintf;
+use function rtrim;
+
 /**
- * autoload.php
- *
- * iCalcreator package autoloader
+ * iCalcreator geo support class
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @since 2.26.8 - 2018-12-12
+ * @since  2.26 - 2018-11-10
  */
-/**
- *         Do NOT alter or remove the constant!!
- */
-define( 'ICALCREATOR_VERSION', 'iCalcreator 2.26.8' );
-/**
- * load iCalcreator src and support classes and Traits
- */
-spl_autoload_register(
-  function( $class ) {
-    static $SRC      = 'src';
-    static $BS       = '\\';
-    static $PHP      = '.php';
-    static $PREFIX   = 'Kigkonsult\\Icalcreator\\';
-    static $BASEDIR  = null;
-    if( is_null( $BASEDIR ))
-      $BASEDIR       = __DIR__ . DIRECTORY_SEPARATOR . $SRC . DIRECTORY_SEPARATOR;
-    if( 0 != strncmp( $PREFIX, $class, 23 ))
-      return false;
-    $class   = substr( $class, 23 );
-    if( false !== strpos( $class, $BS ))
-      $class = str_replace( $BS, DIRECTORY_SEPARATOR, $class );
-    $file    = $BASEDIR . $class . $PHP;
-    if( file_exists( $file )) {
-      require $file;
-      return true;
+class UtilGeo
+{
+    /**
+     * @var string  GEO vars: output format for geo latitude and longitude (before rtrim) etc
+     * @access public
+     * @static
+     */
+    public static $geoLatFmt  = '%09.6f';
+    public static $geoLongFmt = '%8.6f';
+    public static $LATITUDE   = 'latitude';
+    public static $LONGITUDE  = 'longitude';
+
+    /**
+     * Return formatted geo output
+     *
+     * @param float  $ll
+     * @param string $format
+     * @return string
+     * @access public
+     * @static
+     */
+    public static function geo2str2( $ll, $format ) {
+        if( 0.0 < $ll ) {
+            $sign = Util::$PLUS;
+        }
+        else {
+            $sign = ( 0.0 > $ll ) ? Util::$MINUS : null;
+        }
+        return rtrim( rtrim( $sign . sprintf( $format, abs( $ll )), Util::$ZERO ), Util::$DOT );
     }
-    return false;
-  }
-);
-/**
- * iCalcreator timezones add-on functionality functions, IF required?
- */
-// include __DIR__ . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'iCal.tz.inc.php';
+}

@@ -5,7 +5,7 @@
  * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.26.6
+ * Version   2.26.8
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -26,45 +26,59 @@
  *           along with iCalcreator. If not, see <https://www.gnu.org/licenses/>.
  *
  * This file is a part of iCalcreator.
- */
+*/
+
+namespace Kigkonsult\Icalcreator\Traits;
+
+use Kigkonsult\Icalcreator\Util\Util;
+
 /**
- * autoload.php
- *
- * iCalcreator package autoloader
+ * UID property functions
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @since 2.26.8 - 2018-12-12
+ * @since  2.23.20 - 2017-02-17
  */
-/**
- *         Do NOT alter or remove the constant!!
- */
-define( 'ICALCREATOR_VERSION', 'iCalcreator 2.26.8' );
-/**
- * load iCalcreator src and support classes and Traits
- */
-spl_autoload_register(
-  function( $class ) {
-    static $SRC      = 'src';
-    static $BS       = '\\';
-    static $PHP      = '.php';
-    static $PREFIX   = 'Kigkonsult\\Icalcreator\\';
-    static $BASEDIR  = null;
-    if( is_null( $BASEDIR ))
-      $BASEDIR       = __DIR__ . DIRECTORY_SEPARATOR . $SRC . DIRECTORY_SEPARATOR;
-    if( 0 != strncmp( $PREFIX, $class, 23 ))
-      return false;
-    $class   = substr( $class, 23 );
-    if( false !== strpos( $class, $BS ))
-      $class = str_replace( $BS, DIRECTORY_SEPARATOR, $class );
-    $file    = $BASEDIR . $class . $PHP;
-    if( file_exists( $file )) {
-      require $file;
-      return true;
+trait UIDtrait
+{
+    /**
+     * @var array component property UID value
+     * @access protected
+     */
+    protected $uid = null;
+
+    /**
+     * Return formatted output for calendar component property uid
+     *
+     * If uid is missing, uid is created
+     *
+     * @return string
+     */
+    public function createUid() {
+        if( empty( $this->uid )) {
+            $this->uid = Util::makeUid( $this->getConfig( Util::$UNIQUE_ID ));
+        }
+        return Util::createElement(
+            Util::$UID,
+            Util::createParams( $this->uid[Util::$LCparams] ),
+            $this->uid[Util::$LCvalue]
+        );
     }
-    return false;
-  }
-);
-/**
- * iCalcreator timezones add-on functionality functions, IF required?
- */
-// include __DIR__ . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'iCal.tz.inc.php';
+
+    /**
+     * Set calendar component property uid
+     *
+     * @param string $value
+     * @param array  $params
+     * @return bool
+     */
+    public function setUid( $value, $params = null ) {
+        if( empty( $value ) && ( Util::$ZERO != $value )) {
+            return false;
+        } // no allowEmpty check here !!!!
+        $this->uid = [
+            Util::$LCvalue  => Util::trimTrailNL( $value ),
+            Util::$LCparams => Util::setParams( $params ),
+        ];
+        return true;
+    }
+}

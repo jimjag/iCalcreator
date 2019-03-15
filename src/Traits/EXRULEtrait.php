@@ -5,7 +5,7 @@
  * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.26.6
+ * Version   2.26.8
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -26,45 +26,60 @@
  *           along with iCalcreator. If not, see <https://www.gnu.org/licenses/>.
  *
  * This file is a part of iCalcreator.
- */
+*/
+
+namespace Kigkonsult\Icalcreator\Traits;
+
+use Kigkonsult\Icalcreator\Util\Util;
+use Kigkonsult\Icalcreator\Util\UtilRecur;
+
 /**
- * autoload.php
- *
- * iCalcreator package autoloader
+ * EXRULE property functions
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @since 2.26.8 - 2018-12-12
+ * @since  2.22.23 - 2017-04-03
  */
-/**
- *         Do NOT alter or remove the constant!!
- */
-define( 'ICALCREATOR_VERSION', 'iCalcreator 2.26.8' );
-/**
- * load iCalcreator src and support classes and Traits
- */
-spl_autoload_register(
-  function( $class ) {
-    static $SRC      = 'src';
-    static $BS       = '\\';
-    static $PHP      = '.php';
-    static $PREFIX   = 'Kigkonsult\\Icalcreator\\';
-    static $BASEDIR  = null;
-    if( is_null( $BASEDIR ))
-      $BASEDIR       = __DIR__ . DIRECTORY_SEPARATOR . $SRC . DIRECTORY_SEPARATOR;
-    if( 0 != strncmp( $PREFIX, $class, 23 ))
-      return false;
-    $class   = substr( $class, 23 );
-    if( false !== strpos( $class, $BS ))
-      $class = str_replace( $BS, DIRECTORY_SEPARATOR, $class );
-    $file    = $BASEDIR . $class . $PHP;
-    if( file_exists( $file )) {
-      require $file;
-      return true;
+trait EXRULEtrait
+{
+    /**
+     * @var array component property EXRULE value
+     * @access protected
+     */
+    protected $exrule = null;
+
+    /**
+     * Return formatted output for calendar component property exrule
+     *
+     * @return string
+     */
+    public function createExrule() {
+        return UtilRecur::formatRecur( Util::$EXRULE,  $this->exrule, $this->getConfig( Util::$ALLOWEMPTY ));
     }
-    return false;
-  }
-);
-/**
- * iCalcreator timezones add-on functionality functions, IF required?
- */
-// include __DIR__ . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'iCal.tz.inc.php';
+
+    /**
+     * Set calendar component property exdate
+     *
+     * @param array   $exruleset
+     * @param array   $params
+     * @param integer $index
+     * @return bool
+     */
+    public function setExrule( $exruleset, $params = null, $index = null ) {
+        if( empty( $exruleset )) {
+            if( $this->getConfig( Util::$ALLOWEMPTY )) {
+                $exruleset = Util::$SP0;
+            }
+            else {
+                return false;
+            }
+        }
+        Util::setMval(
+            $this->exrule,
+            UtilRecur::setRexrule( $exruleset ),
+            $params,
+            false,
+            $index
+        );
+        return true;
+    }
+}
