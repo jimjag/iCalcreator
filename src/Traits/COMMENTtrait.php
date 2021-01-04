@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -39,13 +39,12 @@ use InvalidArgumentException;
  * COMMENT property functions
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @since 2.27.3 2018-12-22
+ * @since 2.29.14 2019-09-03
  */
 trait COMMENTtrait
 {
     /**
      * @var array component property COMMENT value
-     * @access protected
      */
     protected $comment = null;
 
@@ -54,7 +53,8 @@ trait COMMENTtrait
      *
      * @return string
      */
-    public function createComment() {
+    public function createComment()
+    {
         if( empty( $this->comment )) {
             return null;
         }
@@ -69,10 +69,14 @@ trait COMMENTtrait
             }
             $output .= StringFactory::createElement(
                 self::COMMENT,
-                ParameterFactory::createParams( $commentPart[Util::$LCparams], self::$ALTRPLANGARR, $lang ),
+                ParameterFactory::createParams(
+                    $commentPart[Util::$LCparams],
+                    self::$ALTRPLANGARR,
+                    $lang
+                ),
                 StringFactory::strrep( $commentPart[Util::$LCvalue] )
             );
-        }
+        } // end foreach
         return $output;
     }
 
@@ -83,7 +87,8 @@ trait COMMENTtrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deleteComment( $propDelIx = null ) {
+    public function deleteComment( $propDelIx = null )
+    {
         if( empty( $this->comment )) {
             unset( $this->propDelIx[self::COMMENT] );
             return false;
@@ -99,12 +104,18 @@ trait COMMENTtrait
      * @return bool|array
      * @since  2.27.1 - 2018-12-12
      */
-    public function getComment( $propIx = null, $inclParam = false ) {
+    public function getComment( $propIx = null, $inclParam = false )
+    {
         if( empty( $this->comment )) {
             unset( $this->propIx[self::COMMENT] );
             return false;
         }
-        return $this->getPropertyM( $this->comment, self::COMMENT, $propIx, $inclParam );
+        return $this->getPropertyM(
+            $this->comment,
+            self::COMMENT,
+            $propIx,
+            $inclParam
+        );
     }
 
     /**
@@ -115,15 +126,17 @@ trait COMMENTtrait
      * @param integer $index
      * @return static
      * @throws InvalidArgumentException
-     * @since 2.27.3 2018-12-22
+     * @since 2.29.14 2019-09-03
      */
-    public function setComment( $value = null, $params = null, $index = null ) {
+    public function setComment( $value = null, $params = [], $index = null )
+    {
         if( empty( $value )) {
             $this->assertEmptyValue( $value, self::COMMENT );
             $value  = Util::$SP0;
             $params = [];
         }
-        $this->setMval( $this->comment, $value, $params, null, $index );
+        Util::assertString( $value, self::COMMENT );
+        $this->setMval( $this->comment, (string) $value, $params, null, $index );
         return $this;
     }
 }

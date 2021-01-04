@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -45,7 +45,6 @@ trait SUMMARYtrait
 {
     /**
      * @var array component property SUMMARY value
-     * @access protected
      */
     protected $summary = null;
 
@@ -54,12 +53,15 @@ trait SUMMARYtrait
      *
      * @return string
      */
-    public function createSummary() {
+    public function createSummary()
+    {
         if( empty( $this->summary )) {
             return null;
         }
         if( empty( $this->summary[Util::$LCvalue] )) {
-            return ( $this->getConfig( self::ALLOWEMPTY )) ? StringFactory::createElement( self::SUMMARY ) : null;
+            return $this->getConfig( self::ALLOWEMPTY )
+                ? StringFactory::createElement( self::SUMMARY )
+                : null;
         }
         return StringFactory::createElement(
             self::SUMMARY,
@@ -78,7 +80,8 @@ trait SUMMARYtrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deleteSummary() {
+    public function deleteSummary()
+    {
         $this->summary = null;
         return true;
     }
@@ -90,7 +93,8 @@ trait SUMMARYtrait
      * @return bool|array
      * @since  2.27.1 - 2018-12-12
      */
-    public function getSummary( $inclParam = false ) {
+    public function getSummary( $inclParam = false )
+    {
         if( empty( $this->summary )) {
             return false;
         }
@@ -104,16 +108,18 @@ trait SUMMARYtrait
      * @param array  $params
      * @return static
      * @throws InvalidArgumentException
-     * @since 2.27.3 2018-12-22
+     * @since 2.29.14 2019-09-03
      */
-    public function setSummary( $value = null, $params = null ) {
+    public function setSummary( $value = null, $params = [] )
+    {
         if( empty( $value )) {
             $this->assertEmptyValue( $value, self::SUMMARY );
             $value  = Util::$SP0;
             $params = [];
         }
+        Util::assertString( $value, self::SUMMARY );
         $this->summary = [
-            Util::$LCvalue  => $value,
+            Util::$LCvalue  => (string) $value,
             Util::$LCparams => ParameterFactory::setParams( $params ),
         ];
         return $this;

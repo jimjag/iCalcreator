@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -30,26 +30,30 @@
 
 namespace Kigkonsult\Icalcreator;
 
-use PHPUnit\Framework\TestCase;
-use Kigkonsult\Icalcreator\Util\DateTimeZoneFactory;
-use Kigkonsult\Icalcreator\Util\Util;
-use Kigkonsult\Icalcreator\Util\IcalXMLFactory;
 use DateTime;
-use SimpleXMLElement;
+use DateTimeInterface;
 use Exception;
+use Kigkonsult\Icalcreator\Util\DateTimeFactory;
+use Kigkonsult\Icalcreator\Util\DateTimeZoneFactory;
+use Kigkonsult\Icalcreator\Util\IcalXMLFactory;
+use Kigkonsult\Icalcreator\Util\ParameterFactory;
+use Kigkonsult\Icalcreator\Util\RecurFactory;
+use Kigkonsult\Icalcreator\Util\Util;
+use PHPUnit\Framework\TestCase;
+use SimpleXMLElement;
 
 /**
  * class DtBase
  *
  * @author      Kjell-Inge Gustafsson <ical@kigkonsult.se>
- * @since  2.27.14 - 2019-01-24
+ * @since 2.29.18 2020-01-25
  */
 class DtBase extends TestCase
 {
     private static $ERRFMT = "Error %sin case #%s, %s <%s>->%s";
 
     /**
-     * The test method
+     * The test method, case prefix '-1x'
      *
      * @param int    $case
      * @param array  $compsProps
@@ -57,6 +61,7 @@ class DtBase extends TestCase
      * @param mixed  $params
      * @param array  $expectedGet
      * @param string $expectedString
+     * @throws Exception
      */
     public function theTestMethod(
         $case,
@@ -67,6 +72,8 @@ class DtBase extends TestCase
         $expectedString
     ) {
         $c = new Vcalendar();
+
+
         foreach( $compsProps as $theComp => $props ) {
             $newMethod = 'new' . $theComp;
             $comp      = $c->{$newMethod}();
@@ -75,6 +82,9 @@ class DtBase extends TestCase
                 $createMethod = Vcalendar::getCreateMethodName( $propName );
                 $deleteMethod = Vcalendar::getDeleteMethodName( $propName );
                 $setMethod    = Vcalendar::getSetMethodName( $propName );
+                if( Vcalendar::LAST_MODIFIED == $propName ) {
+                    $c->setLastModified( $value, $params );
+                }
 
 //              error_log( __FUNCTION__ . ' #' . $case . ' <' . $theComp . '>->' . $propName . ' value : ' . var_export( $value, true )); // test ###
 
@@ -93,31 +103,154 @@ class DtBase extends TestCase
                     $getValue = $comp->{$getMethod}( true );
                 }
 
-                $this->assertEquals(
-                    $expectedGet,
-                    $getValue,
-                    sprintf( self::$ERRFMT, null, $case, __FUNCTION__, $theComp, $getMethod )
-                );
+                if( $expectedGet[Util::$LCvalue] instanceof DateTime &&
+                    $getValue[Util::$LCvalue] instanceof DateTime ) {
+                    ParameterFactory::ifExistRemove( $getValue[Util::$LCparams], Util::$ISLOCALTIME );
+                    $this->assertEquals(
+                        $expectedGet[Util::$LCparams],
+                        $getValue[Util::$LCparams],
+                        sprintf( self::$ERRFMT, null, $case . '-11a', __FUNCTION__, $theComp, $getMethod )
+                    );
+                    switch( true ) {
+                        case ParameterFactory::isParamsValueSet( $expectedGet, Vcalendar::DATE ) :
+                            $fmt = DateTimeFactory::$Ymd;
+                            break;
+                        case isset( $getValue[Util::$LCparams][Util::$ISLOCALTIME] ) :
+                            $fmt = DateTimeFactory::$YmdHis;
+                            break;
+                        default :
+                            $fmt = DateTimeFactory::$YMDHISe;
+                            break;
+                    }
+                    $this->assertEquals(
+                        $expectedGet[Util::$LCvalue]->format( $fmt ),
+                        $getValue[Util::$LCvalue]->format( $fmt ),
+                        sprintf( self::$ERRFMT, null, $case . '-11b', __FUNCTION__, $theComp, $getMethod )
+                    );
+                }
                 $this->assertEquals(
                     strtoupper( $propName ) . $expectedString,
                     trim( $comp->{$createMethod}() ),
-                    sprintf( self::$ERRFMT, null, $case, __FUNCTION__, $theComp, $createMethod )
+                    sprintf( self::$ERRFMT, null, $case . '-12', __FUNCTION__, $theComp, $createMethod )
                 );
                 $comp->{$deleteMethod}();
                 if( Vcalendar::DTSTAMP == $propName ) {
                     $this->assertNotFalse(
                         $comp->{$getMethod}(),
-                        sprintf( self::$ERRFMT, '(after delete) ', $case, __FUNCTION__, $theComp, $getMethod )
+                        sprintf( self::$ERRFMT, '(after delete) ', $case . '-13', __FUNCTION__, $theComp, $getMethod )
                     );
                 }
                 else {
                     $this->assertFalse(
                         $comp->{$getMethod}(),
-                        sprintf( self::$ERRFMT, '(after delete) ', $case, __FUNCTION__, $theComp, $getMethod )
+                        sprintf( self::$ERRFMT, '(after delete) ', $case . '-14', __FUNCTION__, $theComp, $getMethod )
                     );
                 }
                 $comp->{$setMethod}( $value, $params );
             }
+        }
+
+        $this->parseCalendarTest( $case, $c, $expectedString, $theComp, $propName );
+
+    }
+
+    /**
+     * The test method 1b, single EXDATE + RDATE, case prefix '-1bx'
+     *
+     * @param int    $case
+     * @param array  $compsProps
+     * @param mixed  $value
+     * @param mixed  $params
+     * @param array  $expectedGet
+     * @param string $expectedString
+     * @throws Exception
+     */
+    public function theTestMethod1b(
+        $case,
+        array $compsProps,
+        $value,
+        $params,
+        $expectedGet,
+        $expectedString
+    ) {
+        $c = new Vcalendar();
+        foreach( $compsProps as $theComp => $props ) {
+            $newMethod = 'new' . $theComp;
+            $comp      = $c->{$newMethod}();
+            foreach( $props as $propName ) {
+                $getMethod    = Vcalendar::getGetMethodName( $propName );
+                $createMethod = Vcalendar::getCreateMethodName( $propName );
+                $deleteMethod = Vcalendar::getDeleteMethodName( $propName );
+                $setMethod    = Vcalendar::getSetMethodName( $propName );
+                //              error_log( __FUNCTION__ . ' #' . $case . '-1b1' . ' <' . $theComp . '>->' . $propName . ' value : ' . var_export( $value, true )); // test ###
+
+                $comp->{$setMethod}( $value, $params );
+                $getValue = $comp->{$getMethod}( null, true );
+                ParameterFactory::ifExistRemove( $getValue[Util::$LCparams], Util::$ISLOCALTIME );
+                $this->assertEquals(
+                    $expectedGet[Util::$LCparams],
+                    $getValue[Util::$LCparams],
+                    sprintf( self::$ERRFMT, null, $case . '-1b2', __FUNCTION__, $theComp, $getMethod )
+                );
+                if( ! empty( $expectedGet[Util::$LCvalue] )) {
+                    $expVal = $expectedGet[Util::$LCvalue];
+
+                    // echo __FUNCTION__ . ' ' . $getMethod . ' ' . var_export( $expectedGet, true ) . PHP_EOL; // test ###
+
+                    switch( true ) {
+                        case ParameterFactory::isParamsValueSet( $expectedGet, Vcalendar::DATE ) :
+                            $fmt = DateTimeFactory::$Ymd;
+                            break;
+                        case isset( $getValue[Util::$LCparams][Util::$ISLOCALTIME] ) :
+                            $fmt = DateTimeFactory::$YmdHis;
+                            break;
+                        default :
+                            $fmt = DateTimeFactory::$YMDHISe;
+                            break;
+                    }
+                    while( is_array( $expVal ) && ! $expVal instanceof DateTime ) {
+                        $expVal = reset( $expVal );
+                    }
+                    $expGet = $expVal->format( $fmt );
+                    $getVal = reset( $getValue[Util::$LCvalue] );
+                    while( is_array( $getVal ) && ! $getVal instanceof DateTime ) {
+                        $getVal = reset( $getVal );
+                    }
+                    $getVal = $getVal->format( $fmt );
+                } // end if
+                else {
+                    $expGet = $expectedGet;
+                    $getVal = $getValue;
+                }
+                $this->assertEquals(
+                    $expGet,
+                    $getVal,
+                    sprintf( self::$ERRFMT, null, $case . '-1b3', __FUNCTION__, $theComp, $getMethod )
+                );
+                $this->assertEquals(
+                    strtoupper( $propName ) . $expectedString,
+                    trim( $comp->{$createMethod}() ),
+                    sprintf( self::$ERRFMT, null, $case . '-1b4', __FUNCTION__, $theComp, $createMethod )
+                );
+                $comp->{$deleteMethod}();
+                if( Vcalendar::DTSTAMP == $propName ) {
+                    $this->assertNotFalse(
+                        $comp->{$getMethod}(),
+                        sprintf( self::$ERRFMT, '(after delete) ', $case . '-1b5', __FUNCTION__, $theComp, $getMethod )
+                    );
+                }
+                else {
+                    $this->assertFalse(
+                        $comp->{$getMethod}(),
+                        sprintf( self::$ERRFMT, '(after delete) ', $case . '-1b6', __FUNCTION__, $theComp, $getMethod )
+                    );
+                }
+                $comp->{$setMethod}( $value, $params );
+                $comp->{$setMethod}( $value, $params );
+                if( ! empty( $value ) ) {
+                    $comp->{$setMethod}( [ $value, $value ], $params );
+                }
+            } // end foreach
         }
 
         $this->parseCalendarTest( $case, $c, $expectedString );
@@ -125,34 +258,39 @@ class DtBase extends TestCase
     }
 
     /**
-     * Testing calendar parse and (-re-)create
+     * Testing calendar parse and (-re-)create, case prefix '-3x'
      *
      * @param int       $case
      * @param Vcalendar $calendar
      * @param string    $expectedString
+     * @param mixed     $theComp
+     * @param string    $propName
+     * @throws Exception
      */
-    public function parseCalendarTest( $case, Vcalendar $calendar, $expectedString = null ) {
-        static $xmlStartChars = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<icalendar xmlns=\"urn:ietf:params:xml:ns:icalendar-2.0\"><!-- kigkonsult iCalcreator";
+    public function parseCalendarTest( $case, Vcalendar $calendar, $expectedString = null, $theComp = null, $propName = null ) {
+        static $xmlStartChars = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<icalendar xmlns=\"urn:ietf:params:xml:ns:icalendar-2.0\"><!-- kigkonsult.se iCalcreator";
         static $xmlEndChars   = "</icalendar>\n";
-        static $strVcalendar  = 'Vcalendar';
-        static $strCC         = 'createCalendar';
-        static $strIcalXML    = 'IcalXMLFactory';
-        static $striCal2XML   = 'iCal2XML';
-        static $strXML2iCal   = 'XML2iCal';
-        static $strPCC        = 'parse, create and compare';
+
+        // echo $case . ' ' . __FUNCTION__ . ' ' . $theComp . '::' . $propName . ' start' . PHP_EOL; // test ###
 
         $calendarStr1 = $calendar->createCalendar();
+
         if( ! empty( $expectedString )) {
             $createString = str_replace( [ Util::$CRLF . ' ', Util::$CRLF ], null, $calendarStr1 );
             $createString = str_replace( '\,', ',', $createString );
             $this->assertNotFalse(
                 strpos( $createString, $expectedString ),
-                sprintf( self::$ERRFMT, null, $case . '-1', __FUNCTION__, $strVcalendar, $strCC )
+                sprintf( self::$ERRFMT, null, $case . '-31', __FUNCTION__, $theComp, $propName )
             );
         }
 
         if( ! empty( $expectedString )) {
+
+            // echo 'start convert to XML' . PHP_EOL; // test ###
+
+            $calendarUid = $calendar->getUid();
             $xml = IcalXMLFactory::iCal2XML( $calendar );
+
             $this->assertStringStartsWith( $xmlStartChars, $xml );
             $this->assertNotFalse( strpos( $xml, Vcalendar::iCalcreatorVersion()));
             $this->assertStringEndsWith( $xmlEndChars, $xml );
@@ -162,21 +300,26 @@ class DtBase extends TestCase
             catch( Exception $e ) {
                 $this->assertTrue(
                     false,
-                    sprintf( self::$ERRFMT, null, $case . '-2', __FUNCTION__, $strIcalXML, $striCal2XML )
+                    sprintf( self::$ERRFMT, null, $case . '-32', __FUNCTION__, $theComp, $propName )
                 );
             }
+
+            // echo 'start XML convert to iCal' . PHP_EOL; // test ###
 
             $c2  = IcalXMLFactory::XML2iCal( $xml );
             $this->assertTrue(
                 ( $c2 instanceof Vcalendar ),
-                sprintf( self::$ERRFMT, null, $case . '-3', __FUNCTION__, $strIcalXML, $strXML2iCal )
+                sprintf( self::$ERRFMT, null, $case . '-33', __FUNCTION__, $theComp, $propName )
             );
 
+            // echo 'start create calendar' . PHP_EOL; // test ###
+
+            $c2->setUid( $calendarUid ); // else UID compare error
             $calendarStr2 = $c2->createCalendar();
             $this->assertEquals(
                 $calendarStr1,
                 $calendarStr2,
-                sprintf( self::$ERRFMT, null, $case . '-4', __FUNCTION__, $strIcalXML, $strPCC )
+                sprintf( self::$ERRFMT, null, $case . '-34', __FUNCTION__, $theComp, $propName )
             );
         }
         else {
@@ -188,153 +331,19 @@ class DtBase extends TestCase
         $this->assertEquals(
             $calendarStr1,
             $calendar3->createCalendar(),
-            sprintf( self::$ERRFMT, null, $case . '-5', __FUNCTION__, $strVcalendar, $strPCC )
+            sprintf( self::$ERRFMT, null, $case . '-35', __FUNCTION__, $theComp, $propName )
         );
-    }
 
-/**
- * The test method 1b, single EXDATE + RDATE
- *
- * @param int    $case
- * @param array  $compsProps
- * @param mixed  $value
- * @param mixed  $params
- * @param array  $expectedGet
- * @param string $expectedString
- */
-public function theTestMethod1b(
-        $case,
-        array $compsProps,
-        $value,
-        $params,
-        $expectedGet,
-        $expectedString
-    ) {
-        $c = new Vcalendar();
-        foreach( $compsProps as $theComp => $props ) {
-            $newMethod = 'new' . $theComp;
-            $comp      = $c->{$newMethod}();
-            foreach( $props as $propName ) {
-                $getMethod    = Vcalendar::getGetMethodName( $propName );
-                $createMethod = Vcalendar::getCreateMethodName( $propName );
-                $deleteMethod = Vcalendar::getDeleteMethodName( $propName );
-                $setMethod    = Vcalendar::getSetMethodName( $propName );
-//              error_log( __FUNCTION__ . ' #' . $case . ' <' . $theComp . '>->' . $propName . ' value : ' . var_export( $value, true )); // test ###
-
-                $comp->{$setMethod}( $value, $params );
-                $getValue = $comp->{$getMethod}( null, true );
-                if( ! empty( $getValue[Util::$LCvalue] )) {
-                    $getValue[Util::$LCvalue] = reset( $getValue[Util::$LCvalue] );
-                }
-                $this->assertEquals(
-                    $expectedGet,
-                    $getValue,
-                    sprintf( self::$ERRFMT, null, $case, __FUNCTION__, $theComp, $getMethod )
-                );
-                $this->assertEquals(
-                    strtoupper( $propName ) . $expectedString,
-                    trim( $comp->{$createMethod}() ),
-                    sprintf( self::$ERRFMT, null, $case, __FUNCTION__, $theComp, $createMethod )
-                );
-                $comp->{$deleteMethod}();
-                if( Vcalendar::DTSTAMP == $propName ) {
-                    $this->assertNotFalse(
-                        $comp->{$getMethod}(),
-                        sprintf( self::$ERRFMT, '(after delete) ', $case, __FUNCTION__, $theComp, $getMethod )
-                    );
-                }
-                else {
-                    $this->assertFalse(
-                        $comp->{$getMethod}(),
-                        sprintf( self::$ERRFMT, '(after delete) ', $case, __FUNCTION__, $theComp, $getMethod )
-                    );
-                }
-                $comp->{$setMethod}( $value, $params );
-                $comp->{$setMethod}( $value, $params );
-                if( ! empty( $value )) {
-                    $comp->{$setMethod}( [ $value, $value ], $params );
-                }
-            }
-        }
-
-        $this->parseCalendarTest( $case, $c, $expectedString );
-
-    }
-
-    /**
-     * The test method 2, test using the 'all args' set-methods invoke
-     *
-     * @param int    $case
-     * @param array  $compsProps
-     * @param mixed  $value
-     * @param mixed  $params
-     * @param array  $expectedGet
-     * @param string $expectedString
-     */
-    public function theTestMethod2(
-        $case,
-        array $compsProps,
-        $value,
-        $params,
-        $expectedGet,
-        $expectedString
-    ) {
-        static $keys = null;
-        if( empty( $keys )) {
-            $keys = [
-                Util::$LCYEAR, Util::$LCMONTH, Util::$LCDAY,
-                Util::$LCHOUR, Util::$LCMIN,   Util::$LCSEC,
-                Util::$LCtz
-            ];
-        }
-        $c = new Vcalendar();
-        foreach( $compsProps as $theComp => $props ) {
-            $newMethod = 'new' . $theComp;
-            $comp      = $c->{$newMethod}();
-            foreach( $props as $propName ) {
-                $getMethod    = Vcalendar::getGetMethodName( $propName );
-                $createMethod = Vcalendar::getCreateMethodName( $propName );
-                $deleteMethod = Vcalendar::getDeleteMethodName( $propName );
-                $setMethod    = Vcalendar::getSetMethodName( $propName );
-                foreach( $keys as $key ) {
-                    ${$key} = ( isset( $value[$key] )) ? $value[$key] : null;
-                }
-
-                $comp->{$setMethod}( ${Util::$LCYEAR}, ${Util::$LCMONTH}, ${Util::$LCDAY},
-                                     ${Util::$LCHOUR}, ${Util::$LCMIN},   ${Util::$LCSEC},
-                                     ${Util::$LCtz},
-                                     $params );
-
-                $getValue = $comp->{$getMethod}( true );
-                $this->assertEquals(
-                    $expectedGet,
-                    $getValue,
-                    sprintf( self::$ERRFMT, null, $case, __FUNCTION__, $theComp, $getMethod )
-                );
-                $this->assertEquals(
-                    strtoupper( $propName ) . $expectedString,
-                    trim( $comp->{$createMethod}() ),
-                    sprintf( self::$ERRFMT, null, $case, __FUNCTION__, $theComp, $createMethod )
-                );
-                $comp->{$deleteMethod}();
-                if( Vcalendar::DTSTAMP == $propName ) {
-                    $this->assertNotFalse(
-                        $comp->{$getMethod}(),
-                        sprintf( self::$ERRFMT, '(after delete) ', $case, __FUNCTION__, $theComp, $getMethod )
-                    );
-                }
-                else {
-                    $this->assertFalse(
-                        $comp->{$getMethod}(),
-                        sprintf( self::$ERRFMT, '(after delete) ', $case, __FUNCTION__, $theComp, $getMethod )
-                    );
-                }
-                $comp->{$setMethod}( ${Util::$LCYEAR}, ${Util::$LCMONTH}, ${Util::$LCDAY},
-                                     ${Util::$LCHOUR}, ${Util::$LCMIN},   ${Util::$LCSEC},
-                                     ${Util::$LCtz},
-                                     $params );
-            }
-        }
+        $out3 = null;
+        ob_start();
+        $calendar3->returnCalendar();
+        $out3 = ob_get_contents();
+        ob_end_clean();
+        $this->assertEquals(
+            $calendarStr1,
+            $out3,
+            sprintf( self::$ERRFMT, null, $case . '-36', __FUNCTION__, $theComp, $propName )
+        );
     }
 
     /**
@@ -345,56 +354,33 @@ public function theTestMethod1b(
      */
     public function getDateTimeAsArray( DateTime $dateTime ) {
         $output =  [
-            Util::$LCYEAR  => $dateTime->format( 'Y' ),
-            Util::$LCMONTH => $dateTime->format( 'm' ),
-            Util::$LCDAY   => $dateTime->format( 'd' ),
-            Util::$LCHOUR  => $dateTime->format( 'H' ),
-            Util::$LCMIN   => $dateTime->format( 'i' ),
-            Util::$LCSEC   => $dateTime->format( 's' ),
+            RecurFactory::$LCYEAR  => $dateTime->format( 'Y' ),
+            RecurFactory::$LCMONTH => $dateTime->format( 'm' ),
+            RecurFactory::$LCDAY   => $dateTime->format( 'd' ),
+            RecurFactory::$LCHOUR  => $dateTime->format( 'H' ),
+            RecurFactory::$LCMIN   => $dateTime->format( 'i' ),
+            RecurFactory::$LCSEC   => $dateTime->format( 's' ),
         ];
         if( DateTimeZoneFactory::isUTCtimeZone( $dateTime->getTimezone()->getName() )) {
-            $output[Util::$LCtz] = 'Z';
+            $output[RecurFactory::$LCtz] = 'Z';
         }
         return $output;
     }
 
     /**
-     * Return the datetime as assoc array
-     *
-     * @param DateTime $dateTime
-     * @return array
-     */
-    public function getDateTimeAsShortArray( DateTime $dateTime ) {
-        return [
-            Util::$LCYEAR  => $dateTime->format( 'Y' ),
-            Util::$LCMONTH => $dateTime->format( 'm' ),
-            Util::$LCDAY   => $dateTime->format( 'd' ),
-        ];
-    }
-
-    /**
      * Return the datetime as (ical create-) long string
      *
-     * @param DateTime $dateTime
+     * @param DateTimeInterface $dateTime
      * @param string   $tz
      * @return string
      */
-    public function getDateTimeAsCreateLongString( DateTime $dateTime, $tz = null ) {
-        static $FMT1 = ';TZID=%s:';
-        static $FMT2 = '%04d%02d%02dT%02d%02d%02d';
+    public function getDateTimeAsCreateLongString( DateTimeInterface $dateTime, $tz = null ) {
+        static $FMT1   = ';TZID=%s:';
         $isUTCtimeZone = ( empty( $tz )) ? false : DateTimeZoneFactory::isUTCtimeZone( $tz );
-        $output  = ( empty( $tz ) || $isUTCtimeZone ) ? ':' : sprintf( $FMT1, $tz );
-        $output .= sprintf(
-            $FMT2,
-            $dateTime->format( 'Y' ),
-            $dateTime->format( 'm' ),
-            $dateTime->format( 'd' ),
-            $dateTime->format( 'H' ),
-            $dateTime->format( 'i' ),
-            $dateTime->format( 's' )
-        );
+        $output        = ( empty( $tz ) || $isUTCtimeZone ) ? Util::$COLON : sprintf( $FMT1, $tz );
+        $output       .= $dateTime->format( DateTimeFactory::$YmdTHis );
         if( $isUTCtimeZone ) {
-            $output .= 'Z';
+            $output   .= 'Z';
         }
         return $output;
     }
@@ -402,16 +388,14 @@ public function theTestMethod1b(
     /**
      * Return the datetime as (ical create-) short string
      *
-     * @param DateTime $dateTime
+     * @param DateTimeInterface $dateTime
+     * @param bool     $prefix
      * @return string
      */
-    public function getDateTimeAsCreateShortString( DateTime $dateTime ) {
-        static $FMT2 = ';VALUE=DATE:%04d%02d%02d';
-        return sprintf(
-            $FMT2,
-            $dateTime->format( 'Y' ),
-            $dateTime->format( 'm' ),
-            $dateTime->format( 'd' )
-        );
+    public function getDateTimeAsCreateShortString( DateTimeInterface $dateTime, $prefix = true ) {
+        static $FMT1 = ';VALUE=DATE:%d';
+        static $FMT2 = ':%d';
+        $fmt = $prefix ? $FMT1 : $FMT2;
+        return sprintf( $fmt, $dateTime->format( DateTimeFactory::$Ymd ));
     }
 }

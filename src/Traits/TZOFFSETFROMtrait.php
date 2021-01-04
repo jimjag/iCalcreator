@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -30,14 +30,14 @@
 
 namespace Kigkonsult\Icalcreator\Traits;
 
+use InvalidArgumentException;
 use Kigkonsult\Icalcreator\Util\DateTimeZoneFactory;
+use Kigkonsult\Icalcreator\Util\ParameterFactory;
 use Kigkonsult\Icalcreator\Util\StringFactory;
 use Kigkonsult\Icalcreator\Util\Util;
-use Kigkonsult\Icalcreator\Util\ParameterFactory;
-use InvalidArgumentException;
 use Kigkonsult\Icalcreator\Vcalendar;
 
-use sprintf;
+use function sprintf;
 
 /**
  * TZOFFSETFROM property functions
@@ -49,7 +49,6 @@ trait TZOFFSETFROMtrait
 {
     /**
      * @var array component property TZOFFSETFROM value
-     * @access protected
      */
     protected $tzoffsetfrom = null;
 
@@ -58,12 +57,15 @@ trait TZOFFSETFROMtrait
      *
      * @return string
      */
-    public function createTzoffsetfrom() {
+    public function createTzoffsetfrom()
+    {
         if( empty( $this->tzoffsetfrom )) {
             return null;
         }
         if( empty( $this->tzoffsetfrom[Util::$LCvalue] )) {
-            return ( $this->getConfig( self::ALLOWEMPTY )) ? StringFactory::createElement( self::TZOFFSETFROM ) : null;
+            return $this->getConfig( self::ALLOWEMPTY )
+                ? StringFactory::createElement( self::TZOFFSETFROM )
+                : null;
         }
         return StringFactory::createElement(
             self::TZOFFSETFROM,
@@ -78,7 +80,8 @@ trait TZOFFSETFROMtrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deleteTzoffsetfrom() {
+    public function deleteTzoffsetfrom()
+    {
         $this->tzoffsetfrom = null;
         return true;
     }
@@ -90,11 +93,14 @@ trait TZOFFSETFROMtrait
      * @return bool|array
      * @since  2.27.1 - 2018-12-13
      */
-    public function getTzoffsetfrom( $inclParam = false ) {
+    public function getTzoffsetfrom( $inclParam = false )
+    {
         if( empty( $this->tzoffsetfrom )) {
             return false;
         }
-        return ( $inclParam ) ? $this->tzoffsetfrom : $this->tzoffsetfrom[Util::$LCvalue];
+        return ( $inclParam )
+            ? $this->tzoffsetfrom
+            : $this->tzoffsetfrom[Util::$LCvalue];
     }
 
     /**
@@ -106,7 +112,7 @@ trait TZOFFSETFROMtrait
      * @throws InvalidArgumentException
      * @since 2.27.3 2019-03-14
      */
-    public function setTzoffsetfrom( $value = null, $params = null ) {
+    public function setTzoffsetfrom( $value = null, $params = [] ) {
         static $ERR = 'Invalid %s offset value %s';
         if( empty( $value )) {
             $this->assertEmptyValue( $value, self::TZOFFSETFROM );

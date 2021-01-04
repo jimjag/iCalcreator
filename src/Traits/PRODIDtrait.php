@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -46,7 +46,6 @@ trait PRODIDtrait
 {
     /**
      * @var string calendar property PRODID
-     * @access protected
      */
     protected $prodid = null;
 
@@ -55,7 +54,8 @@ trait PRODIDtrait
      *
      * @return string
      */
-    public function createProdid() {
+    public function createProdid()
+    {
         if( empty( $this->prodid )) {
             $this->makeProdid();
         }
@@ -68,7 +68,8 @@ trait PRODIDtrait
      * @return string
      * @since  2.27.1 - 2018-12-16
      */
-    public function getProdid() {
+    public function getProdid()
+    {
         if( empty( $this->prodid )) {
             $this->makeProdid();
         }
@@ -88,7 +89,8 @@ trait PRODIDtrait
      *
      * @since  2.26.2 - 2018-11-29
      */
-    public function makeProdid() {
+    public function makeProdid()
+    {
         static $FMT = '-//%s//NONSGML kigkonsult.se %s//%s';
         if( false !== ( $lang = $this->getConfig( self::LANGUAGE ))) {
             $lang = strtoupper( $lang );

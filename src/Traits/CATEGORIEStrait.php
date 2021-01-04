@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -35,20 +35,16 @@ use Kigkonsult\Icalcreator\Util\Util;
 use Kigkonsult\Icalcreator\Util\ParameterFactory;
 use InvalidArgumentException;
 
-use function implode;
-use function is_array;
-
 /**
  * CATEGORIES property functions
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @since 2.27.3 2018-12-22
+ * @since 2.29.14 2019-09-03
  */
 trait CATEGORIEStrait
 {
     /**
      * @var array component property CATEGORIES value
-     * @access protected
      */
     protected $categories = null;
 
@@ -56,34 +52,54 @@ trait CATEGORIEStrait
      * Return formatted output for calendar component property categories
      *
      * @return string
+     * @since  2.29.11 - 2019-08-30
      */
-    public function createCategories() {
-        if( empty( $this->categories )) {
+    public function createCategories()
+    {
+        return self::createCatRes(
+            self::CATEGORIES,
+            $this->categories,
+            $this->getConfig( self::LANGUAGE ),
+            $this->getConfig( self::ALLOWEMPTY ),
+            [ self::LANGUAGE ]
+        );
+    }
+
+    /**
+     * Return formatted output for calendar component properties categories/resources
+     *
+     * @param string $propName
+     * @param array  $pValArr
+     * @param string $lang
+     * @param bool   $allowEmpty
+     * @param array  $specPkeys
+     * @return string
+     * @since  2.29.13 - 2019-09-03
+     */
+    private static function createCatRes(
+        $propName,
+        $pValArr,
+        $lang,
+        $allowEmpty,
+        $specPkeys
+    ) {
+        if( empty( $pValArr )) {
             return null;
         }
         $output = null;
-        $lang   = $this->getConfig( self::LANGUAGE );
-        foreach( $this->categories as $cx => $category ) {
-            if( empty( $category[Util::$LCvalue] )) {
-                if( $this->getConfig( self::ALLOWEMPTY )) {
-                    $output .= StringFactory::createElement( self::CATEGORIES );
+        foreach( $pValArr as $cx => $valuePart ) {
+            if( empty( $valuePart[Util::$LCvalue] )) {
+                if( $allowEmpty) {
+                    $output .= StringFactory::createElement( $propName );
                 }
                 continue;
             }
-            if( is_array( $category[Util::$LCvalue] )) {
-                foreach( $category[Util::$LCvalue] as $cix => $cValue ) {
-                    $category[Util::$LCvalue][$cix] = StringFactory::strrep( $cValue );
-                }
-                $content = implode( Util::$COMMA, $category[Util::$LCvalue] );
-            }
-            else {
-                $content = StringFactory::strrep( $category[Util::$LCvalue] );
-            }
+            $content = StringFactory::strrep( $valuePart[Util::$LCvalue] );
             $output .= StringFactory::createElement(
-                self::CATEGORIES,
+                $propName,
                 ParameterFactory::createParams(
-                    $category[Util::$LCparams],
-                    [ self::LANGUAGE ],
+                    $valuePart[Util::$LCparams],
+                    $specPkeys,
                     $lang
                 ),
                 $content
@@ -99,12 +115,17 @@ trait CATEGORIEStrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deleteCategories( $propDelIx = null ) {
+    public function deleteCategories( $propDelIx = null )
+    {
         if( empty( $this->categories )) {
             unset( $this->propDelIx[self::CATEGORIES] );
             return false;
         }
-        return $this->deletePropertyM( $this->categories, self::CATEGORIES, $propDelIx );
+        return $this->deletePropertyM(
+            $this->categories,
+            self::CATEGORIES,
+            $propDelIx
+        );
     }
 
     /**
@@ -115,12 +136,17 @@ trait CATEGORIEStrait
      * @return bool|array
      * @since  2.27.1 - 2018-12-12
      */
-    public function getCategories( $propIx = null, $inclParam = false ) {
+    public function getCategories( $propIx = null, $inclParam = false )
+    {
         if( empty( $this->categories )) {
             unset( $this->propIx[self::CATEGORIES] );
             return false;
         }
-        return $this->getPropertyM( $this->categories, self::CATEGORIES, $propIx, $inclParam );
+        return $this->getPropertyM( $this->categories,
+            self::CATEGORIES,
+            $propIx,
+            $inclParam
+        );
     }
 
     /**
@@ -131,15 +157,17 @@ trait CATEGORIEStrait
      * @param integer $index
      * @return static
      * @throws InvalidArgumentException
-     * @since 2.27.3 2018-12-22
+     * @since 2.29.14 2019-09-03
      */
-    public function setCategories( $value = null, $params = null, $index = null ) {
+    public function setCategories( $value = null, $params = [], $index = null )
+    {
         if( empty( $value )) {
             $this->assertEmptyValue( $value, self::CATEGORIES );
             $value  = Util::$SP0;
             $params = [];
         }
-        $this->setMval( $this->categories, $value, $params, null, $index );
+        Util::assertString( $value, self::CATEGORIES );
+        $this->setMval( $this->categories, (string) $value, $params, null, $index );
         return $this;
     }
 }

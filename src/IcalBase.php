@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28.2
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -29,10 +29,9 @@
  */
 namespace Kigkonsult\Icalcreator;
 
-use Kigkonsult\Icalcreator\Util\Util;
-use Kigkonsult\Icalcreator\Util\HttpFactory;
-use Kigkonsult\Icalcreator\Util\ParameterFactory;
 use InvalidArgumentException;
+use Kigkonsult\Icalcreator\Util\ParameterFactory;
+use Kigkonsult\Icalcreator\Util\Util;
 
 use function define;
 use function defined;
@@ -48,7 +47,6 @@ use function is_null;
 use function is_object;
 use function key;
 use function ksort;
-use function microtime;
 use function property_exists;
 use function sprintf;
 use function strtolower;
@@ -60,7 +58,7 @@ use function ucfirst;
  *         Do NOT alter or remove the constant!!
  */
 if( ! defined( 'ICALCREATOR_VERSION' )) {
-    define( 'ICALCREATOR_VERSION', 'iCalcreator 2.28.2' );
+    define( 'ICALCREATOR_VERSION', 'iCalcreator 2.30' );
 }
 
 /**
@@ -69,7 +67,7 @@ if( ! defined( 'ICALCREATOR_VERSION' )) {
  * Properties and methods shared by Vcalendar and CalendarComponents
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @since  2.27.20 - 2019-05-20
+ * @since  2.29.4 - 2019-07-01
  */
 abstract class IcalBase implements IcalInterface
 {
@@ -77,17 +75,11 @@ abstract class IcalBase implements IcalInterface
 
     /**
      * @var string
-     * @access protected
-     * @static
      */
-    protected static $INDEX  = 'INDEX';
-    protected static $YMDHIS = 'YmdHis';
-    protected static $DOTICS = '.ics';
-    protected static $BS     = '\\';
+    protected static $INDEX = 'INDEX';
 
     /**
      * @var array  iCal V*-component collection
-     * @static
      * @usedby IcalBase+Vcalendar+SelectFactory
      */
     public static $VCOMPS   = [
@@ -99,7 +91,6 @@ abstract class IcalBase implements IcalInterface
 
     /**
      * @var array  iCal timezone component collection
-     * @static
      * @usedby DTSTARTtrait+RexdateFactory
      */
     public static $TZCOMPS  = [
@@ -110,10 +101,8 @@ abstract class IcalBase implements IcalInterface
 
     /**
      * @var array  iCal component collection
-     * @access protected
-     * @static
      */
-    protected static $MCOMPS = [
+    protected static $CALCOMPS = [
         Vcalendar::VEVENT,
         Vcalendar::VTODO,
         Vcalendar::VJOURNAL,
@@ -124,8 +113,6 @@ abstract class IcalBase implements IcalInterface
 
     /**
      * @var array  iCal sub-component collection
-     * @access protected
-     * @static
      * @usedby CalendarComponent+IcalBase+DTSTAMPtrait
      */
     protected static $SUBCOMPS = [
@@ -137,7 +124,6 @@ abstract class IcalBase implements IcalInterface
 
     /**
      * @var array  iCal component multiple property sub-collection
-     * @static
      * @usedby CalendarComponent + Vcalendar + SelectFactory + SortFactory
      */
     public static $MPROPS1    = [
@@ -147,21 +133,19 @@ abstract class IcalBase implements IcalInterface
 
     /**
      * @var array  iCal component multiple property collection
-     * @access protected
-     * @static
-     * @usedby CalendarComponent(deprecated) + IcalBase
+     * @since  2.27.20 - 2019-05-20
+     * @usedby IcalBase
      */
     protected static $MPROPS2    = [
         Vcalendar::ATTACH, Vcalendar::ATTENDEE, Vcalendar::CATEGORIES,
         Vcalendar::COMMENT, Vcalendar::CONTACT, Vcalendar::DESCRIPTION,
-        Vcalendar::EXDATE, Vcalendar::EXRULE, Vcalendar::FREEBUSY, Vcalendar::RDATE,
-        Vcalendar::RELATED_TO, Vcalendar::RESOURCES, Vcalendar::RRULE,
+        Vcalendar::EXDATE, Vcalendar::FREEBUSY, Vcalendar::RDATE,
+        Vcalendar::RELATED_TO, Vcalendar::RESOURCES,
         Vcalendar::REQUEST_STATUS, Vcalendar::TZNAME, Vcalendar::X_PROP,
     ];
 
     /**
      * @var array  iCal component misc. property collection
-     * @static
      * @usedby Vcalendar + SelectFactory
      */
     public static $OTHERPROPS = [
@@ -171,48 +155,62 @@ abstract class IcalBase implements IcalInterface
     ];
 
     /**
+     * @var array  iCal component TEXT properties
+     * @usedby Vcalendar + CalendarComponent
+     */
+    protected static $TEXTPROPS = [
+        self::CATEGORIES,
+        self::COLOR,
+        self::COMMENT,
+        self::DESCRIPTION,
+        self::NAME,
+        self::SUMMARY,
+    ];
+
+    /**
+     * @var string
+     */
+    protected static $FMTERRPROPFMT = 'Invalid %s input format (%s)';
+
+    /**
+     * @var array
+     */
+    protected static $ALTRPLANGARR  = [ self::ALTREP, self::LANGUAGE ];
+
+    /**
      * @var array container for sub-components
-     * @access protected
      */
     protected $components = [];
 
     /**
      * @var array $unparsed calendar/components in 'raw' text...
-     * @access protected
      */
     protected $unparsed = null;
 
     /**
      * @var array $config configuration with defaults
-     * @access protected
      */
     protected $config = [
         self::ALLOWEMPTY => true,
-        self::DELIMITER  => DIRECTORY_SEPARATOR,
-        self::DIRECTORY  => '.'
     ];
 
     /**
      * @var string component type
-     * @access protected
      */
     protected $compType = null;
 
     /**
      * @var array component index
-     * @access protected
      */
     protected $compix = [];
 
     /**
      * @var array get multi property index
-     * @access protected
      */
     protected $propIx = [];
 
     /**
      * @var array delete multi property index
-     * @access protected
      */
     protected $propDelIx = [];
 
@@ -222,7 +220,8 @@ abstract class IcalBase implements IcalInterface
      * @link https://php.net/manual/en/language.oop5.cloning.php#116329
      * @since  2.26 - 2018-11-10
      */
-    public function __clone() {
+    public function __clone()
+    {
         $object_vars = get_object_vars( $this );
         foreach( $object_vars as $attr_name => $attr_value ) {
             if( is_object( $this->$attr_name )) {
@@ -237,7 +236,7 @@ abstract class IcalBase implements IcalInterface
                     unset( $attr_array_value );
                 }
             }
-        }
+        } // end foreach
         $this->compix    = [];
         $this->propIx    = [];
         $this->propDelIx = [];
@@ -249,7 +248,8 @@ abstract class IcalBase implements IcalInterface
      * @return static
      * @since  2.27.14 - 2019-03-11
      */
-    public function reset() {
+    public function reset()
+    {
         $this->compix = [];
         return $this;
     }
@@ -258,10 +258,10 @@ abstract class IcalBase implements IcalInterface
      * Return component type
      *
      * @return string
-     * @static
      * @since  2.27.2 - 2018-12-21
      */
-    public function getCompType() {
+    public function getCompType()
+    {
         return $this->compType;
     }
 
@@ -272,7 +272,8 @@ abstract class IcalBase implements IcalInterface
      * @return static
      * @since  2.27.14 - 2019-02-04
      */
-    public function deleteConfig( $key ) {
+    public function deleteConfig( $key )
+    {
         $key = strtoupper( $key );
         if( isset( $this->config[$key] )) {
             unset( $this->config[$key] );
@@ -285,9 +286,10 @@ abstract class IcalBase implements IcalInterface
      *
      * @param mixed $config
      * @return mixed   bool false on not found or empty
-     * @since  2.27.14 - 2019-02-20
+     * @since  2.29.4 - 2019-07-02
      */
-    public function getConfig( $config = null ) {
+    public function getConfig( $config = null )
+    {
         static $LCORDNO = 'ordno';
         static $LCTYPE  = 'type';
         static $LCUID   = 'uid';
@@ -300,16 +302,6 @@ abstract class IcalBase implements IcalInterface
                 $output[self::LANGUAGE]  = $cfg;
             }
             $output[self::UNIQUE_ID]     = $this->getConfig( self::UNIQUE_ID );
-            if( ! property_exists( $this, self::getInternalPropName( self::PRODID ))) {
-                $output[self::DELIMITER] = $this->getConfig( self::DELIMITER );
-                $output[self::DIRECTORY] = $this->getConfig( self::DIRECTORY );
-                $output[self::FILENAME]  = $this->getConfig( self::FILENAME );
-                $output[self::DIRFILE]   = $this->getConfig( self::DIRFILE );
-                $output[self::FILESIZE]  = $this->getConfig( self::FILESIZE );
-                if( false !== ( $cfg = $this->getConfig( self::URL ))) {
-                    $output[self::URL]   = $cfg;
-                }
-            }
             return $output;
         }
         switch( strtoupper( $config )) {
@@ -329,53 +321,6 @@ abstract class IcalBase implements IcalInterface
                     return $this->config[self::LANGUAGE];
                 }
                 break;
-            case self::DELIMITER :
-                if( ! isset( $this->config[self::DELIMITER] )) {  // default
-                    $this->config[self::DELIMITER] = DIRECTORY_SEPARATOR;
-                }
-                return $this->config[self::DELIMITER];
-                break;
-            case self::DIRECTORY :
-                if( ! isset( $this->config[self::DIRECTORY] )) {  // default
-                    $this->config[self::DIRECTORY] = Util::$DOT;
-                }
-                return $this->config[self::DIRECTORY];
-                break;
-            case self::FILENAME :
-                if( ! isset( $this->config[self::FILENAME] )) {
-                    $this->config[self::FILENAME] = self::getFakedFilename();
-                }
-                return $this->config[self::FILENAME];
-                break;
-            case self::FILESIZE :
-                $size = 0;
-                if( empty( $this->config[self::URL] )) {
-                    $dirFile = $this->getConfig( self::DIRFILE );
-                    if( ! is_file( $dirFile ) || ( false === ( $size = filesize( $dirFile )))) {
-                        $size = 0;
-                    }
-                    clearstatcache();
-                }
-                return $size;
-                break;
-            case self::DIRFILE :
-                return
-                    $this->getConfig( self::DIRECTORY ) .
-                    $this->getConfig( self::DELIMITER ) .
-                    $this->getConfig( self::FILENAME );
-                break;
-            case self::FILEINFO :
-                return [
-                    $this->getConfig( self::DIRECTORY ),
-                    $this->getConfig( self::FILENAME ),
-                    $this->getConfig( self::FILESIZE ),
-                ];
-                break;
-            case self::URL :
-                if( ! empty( $this->config[self::URL] )) {
-                    return $this->config[self::URL];
-                }
-                break;
             case self::COMPSINFO:
                 $this->compix = [];
                 $info = [];
@@ -391,7 +336,7 @@ abstract class IcalBase implements IcalInterface
                         }
                         $info[$cix][$LCPROPS] = $component->getConfig( self::PROPINFO );
                         $info[$cix][$LCSUB]   = $component->getConfig( self::COMPSINFO );
-                    }
+                    } // end foreach
                 }
                 return $info;
                 break;
@@ -403,7 +348,7 @@ abstract class IcalBase implements IcalInterface
                 break;
             default :
                 break;
-        }
+        } // end switch
         return false;
     }
 
@@ -411,20 +356,22 @@ abstract class IcalBase implements IcalInterface
      * Return array( propertyName => count )
      *
      * @return array
-     * @access protected
-     * @since  2.27.11 - 2019-01-03
+     * @since  2.29.05 - 2019-06-20
      */
-    protected function getpropInfo() {
+    protected function getpropInfo()
+    {
         static $PROPNAMES  = [
             self::ACTION, self::ATTACH, self::ATTENDEE, self::CATEGORIES,
-            self::KLASS, self::COMMENT, self::COMPLETED, self::CONTACT,
+            self::KLASS, self::COLOR, self::COMMENT,
+            self::COMPLETED, self::CONFERENCE, self::CONTACT,
             self::CREATED, self::DESCRIPTION, self::DTEND, self::DTSTAMP,
             self::DTSTART, self::DUE, self::DURATION, self::EXDATE, self::EXRULE,
-            self::FREEBUSY, self::GEO, self::LAST_MODIFIED, self::LOCATION,
+            self::FREEBUSY, self::GEO, self::IMAGE,
+            self::LAST_MODIFIED, self::LOCATION, self::NAME,
             self::ORGANIZER, self::PERCENT_COMPLETE, self::PRIORITY,
-            self::RECURRENCE_ID, self::RELATED_TO, self::REPEAT,
+            self::RECURRENCE_ID, self::REFRESH_INTERVAL, self::RELATED_TO, self::REPEAT,
             self::REQUEST_STATUS, self::RESOURCES, self::RRULE, self::RDATE,
-            self::SEQUENCE, self::STATUS, self::SUMMARY, self::TRANSP,
+            self::SEQUENCE, self::SOURCE, self::STATUS, self::SUMMARY, self::TRANSP,
             self::TRIGGER, self::TZNAME, self::TZID, self::TZOFFSETFROM,
             self::TZOFFSETTO, self::TZURL, self::UID, self::URL, self::X_PROP,
         ];
@@ -445,13 +392,13 @@ abstract class IcalBase implements IcalInterface
                         $output[$propName3] = 1;
                     }
                     break;
-                case ( Util::isPropInList( $propName, Util::$MPROPS2 )) :
+                case ( Util::isPropInList( $propName, self::$MPROPS2 )) :
                     $output[$propName] = count( $this->{$propName2} );
                     break;
                 default :
                     $output[$propName] = 1;
-            }
-        }
+            } // end switch
+        } // end foreach
         return $output;
     }
 
@@ -463,24 +410,17 @@ abstract class IcalBase implements IcalInterface
      * @param bool   $softUpdate
      * @return static
      * @throws InvalidArgumentException
-     * @since  2.27.8 - 2019-01-19
+     * @since  2.29.4 - 2019-07-02
      */
-    public function setConfig( $config, $value = null, $softUpdate = null ) {
-        static $ERRMSG1 = 'Directory \'%s\' does not exist';
-        static $ERRMSG2 = 'File \'%s\' NOT readable or writable';
-        static $ERRMSG3 = 'Directory \'%s\' NOT readable or writable';
+    public function setConfig( $config, $value = null, $softUpdate = null )
+    {
         static $ERRMSG9 = 'Invalid config value %s';
-        $isComponent = ( ! property_exists( $this, self::getInternalPropName( self::PRODID )));
+        $isComponent = ( ! property_exists(
+            $this,
+            self::getInternalPropName( self::PRODID )
+        ));
         if( is_array( $config )) {
             $config = array_change_key_case( $config, CASE_UPPER );
-            if( ! $isComponent && isset( $config[self::DELIMITER] )) {
-                $this->setConfig( self::DELIMITER, $config[self::DELIMITER] );
-                unset( $config[self::DELIMITER] );
-            }
-            if( ! $isComponent && isset( $config[self::DIRECTORY] )) {
-                $this->setConfig( self::DIRECTORY, $config[self::DIRECTORY] );
-                unset( $config[self::DIRECTORY] );
-            }
             foreach( $config as $cKey => $cValue ) {
                 $this->setConfig( $cKey, $cValue );
             }
@@ -499,93 +439,18 @@ abstract class IcalBase implements IcalInterface
                 if( empty( $this->config[self::LANGUAGE] ) || ! $softUpdate ) { // ??
                     $this->config[self::LANGUAGE] = $value;
                 }
-                if( ! $isComponent ) {
-                    $this->makeProdid();
-                }
                 $subCfg = [ self::LANGUAGE => $value ];
                 break;
             case ( self::UNIQUE_ID == $key ) :
                 $value  = trim( $value );
                 $this->config[self::UNIQUE_ID] = $value;
-                if( ! $isComponent ) {
-                    $this->makeProdid();
-                }
                 $subCfg = [ self::UNIQUE_ID => $value ];
                 break;
             case ( $isComponent ) :
                 break;
-            case ( self::DIRFILE == $key ) :
-                break;
-            case ( self::FILESIZE == $key ) :
-                break;
-            case ( self::DELIMITER == $key ) :
-                $this->config[self::DELIMITER] = $value;
-                return $this;
-                break;
-            case ( self::DIRECTORY == $key ) :
-                if( empty( $value ) || ( Util::$DOT == $value )) {
-                    break;
-                }
-                $path = rtrim( trim( $value ));
-                switch( true ) {
-                    case ( false === ( $value = rtrim( realpath( $path ), $this->config[self::DELIMITER] ))) :
-                        throw new InvalidArgumentException( sprintf( $ERRMSG1, $path ));
-                        break;
-                    case ( ! is_readable( $value ) || ! is_writable( $value )) :
-                        throw new InvalidArgumentException( sprintf( $ERRMSG3, $value ));
-                        break;
-                    default :  /* local directory */
-                        $this->config[self::DIRECTORY] = $value;
-                        $this->config[self::URL]       = null;
-                        break;
-                }
-                return $this;
-                break;
-            case ( self::FILENAME == $key ) :
-                $value   = trim( $value );
-                if( empty( $value ))  {
-                    break;
-                }
-//                $dirFile = $this->config[self::DIRECTORY] . $this->config[self::DELIMITER] . $value;
-                $dirFile = $this->getConfig( self::DIRECTORY ) .
-                           $this->getConfig( self::DELIMITER ) . $value;
-                switch( true ) {
-                    case ( file_exists( $dirFile )) :
-                        /* local file exists */
-                        if( ! is_readable( $dirFile ) && ! is_writable( $dirFile )) {
-                            throw new InvalidArgumentException( sprintf( $ERRMSG2, $dirFile ));
-                        }
-                        clearstatcache();
-                        $this->config[self::FILENAME] = $value;
-                        break;
-                    case ( is_readable( $this->config[self::DIRECTORY] ) ||
-                        is_writable( $this->config[self::DIRECTORY] )) :
-                        /* read- or writable directory */
-                        clearstatcache();
-                        $this->config[self::FILENAME] = $value;
-                        break;
-                    default :
-                        throw new InvalidArgumentException( sprintf( $ERRMSG3, $this->config[self::DIRECTORY] ));
-                        break;
-                }
-                return $this;
-                break;
-            case ( self::URL == $key ) :
-                /* remote file - URL */
-                HttpFactory::assertUrl( $value );
-                $this->config[self::DIRECTORY] = Util::$DOT;
-                $this->config[self::URL]       = $value;
-                if( self::$DOTICS != strtolower( substr( $value, -4 ))) {
-                    unset( $this->config[self::FILENAME] );
-                }
-                else {
-                    $this->config[self::FILENAME] = basename( $value );
-                }
-                return $this;
-                break;
             default:  // any invalid config key.. .
                 throw new InvalidArgumentException( sprintf( $ERRMSG9, $config ));
-        }
+        } // end switch
         if( ! empty( $subCfg ) && ! empty( $this->components )) {
             foreach( $subCfg as $cfgkey => $cfgValue ) {
                 foreach( $this->components as $cix => $component ) {
@@ -597,27 +462,15 @@ abstract class IcalBase implements IcalInterface
     }
 
     /**
-     * Return faked filename
-     *
-     * @return string $propName
-     * @access protected
-     * @static
-     * @since  2.27.1 - 2018-12-12
-     */
-    protected static function getFakedFilename() {
-        return date( self::$YMDHIS, intval( microtime( true ))) . self::$DOTICS;
-    }
-
-    /**
      * Assert empty value
      *
      * @param mixed  $value
      * @param string $propName
-     * @access protected
      * @throws InvalidArgumentException
      * @since  2.27.1 - 2018-12-12
      */
-    protected function assertEmptyValue( $value, $propName ) {
+    protected function assertEmptyValue( $value, $propName )
+    {
         static $ERRMSG = 'Empty %s value not allowed';
         if( empty( $value ) && ! $this->getConfig( self::ALLOWEMPTY )) {
             throw new InvalidArgumentException( sprintf( $ERRMSG, $propName ));
@@ -631,11 +484,10 @@ abstract class IcalBase implements IcalInterface
      * @param mixed $propName
      * @param int   $index
      * @return bool   true on success
-     * @access protected
-     * @static
      * @since  2.27.1 - 2018-12-15
      */
-    protected static function getIndex( array & $indexArr, $propName, $index = null ) {
+    protected static function getIndex( array & $indexArr, $propName, $index = null )
+    {
         if( is_null( $index )) {
             $index = ( isset( $indexArr[$propName] )) ? $indexArr[$propName] + 2 : 1;
         }
@@ -649,11 +501,10 @@ abstract class IcalBase implements IcalInterface
      *
      * @param string $propName
      * @return string
-     * @access protected
-     * @static
      * @since  2.27.1 - 2018-12-16
      */
-    protected static function getInternalPropName( $propName ) {
+    protected static function getInternalPropName( $propName )
+    {
         $internalName = strtolower( $propName );
         if( false !== strpos( $internalName, Util::$MINUS )) {
             $internalName = implode( explode( Util::$MINUS, $internalName ));
@@ -667,11 +518,10 @@ abstract class IcalBase implements IcalInterface
      * @param string $format
      * @param string $propName
      * @return string
-     * @access private
-     * @static
      * @since  2.27.14 - 2019-02-18
      */
-    private static function getMethodName( $format, $propName ) {
+    private static function getMethodName( $format, $propName )
+    {
         return sprintf( $format, ucfirst( self::getInternalPropName( $propName )));
     }
 
@@ -680,10 +530,10 @@ abstract class IcalBase implements IcalInterface
      *
      * @param string $propName
      * @return string
-     * @static
      * @since  2.27.1 - 2019-01-17
      */
-    public static function getCreateMethodName( $propName ) {
+    public static function getCreateMethodName( $propName )
+    {
         static $FMT = 'create%s';
         return self::getMethodName( $FMT, $propName );
     }
@@ -693,10 +543,10 @@ abstract class IcalBase implements IcalInterface
      *
      * @param string $propName
      * @return string
-     * @static
      * @since  2.27.1 - 2018-12-12
      */
-    public static function getDeleteMethodName( $propName ) {
+    public static function getDeleteMethodName( $propName )
+    {
         static $FMT = 'delete%s';
         return self::getMethodName( $FMT, $propName );
     }
@@ -706,10 +556,10 @@ abstract class IcalBase implements IcalInterface
      *
      * @param string $propName
      * @return string
-     * @static
      * @since  2.27.1 - 2018-12-12
      */
-    public static function getGetMethodName( $propName ) {
+    public static function getGetMethodName( $propName )
+    {
         static $FMT = 'get%s';
         return self::getMethodName( $FMT, $propName );
     }
@@ -719,10 +569,10 @@ abstract class IcalBase implements IcalInterface
      *
      * @param string $propName
      * @return string
-     * @static
      * @since  2.27.1 - 2018-12-16
      */
-    public static function getSetMethodName( $propName ) {
+    public static function getSetMethodName( $propName )
+    {
         static $FMT = 'set%s';
         return self::getMethodName( $FMT, $propName );
     }
@@ -733,11 +583,10 @@ abstract class IcalBase implements IcalInterface
      * @param array $propArr   component (multi-)property
      * @param int   $propIx getter counter
      * @return bool true
-     * @access protected
-     * @static
      * @since  2.27.1 - 2018-12-15
      */
-    protected static function recountMvalPropix( array $propArr, & $propIx ) {
+    protected static function recountMvalPropix( array $propArr, & $propIx )
+    {
         if( empty( $propArr )) {
             return false;
         }
@@ -756,16 +605,14 @@ abstract class IcalBase implements IcalInterface
      * @param array $params
      * @param array $defaults
      * @param int   $index
-     * @access protected
-     * @static
      * @since  2.22.23 - 2017-04-08
      */
     protected static function setMval(
         & $valArr,
         $value,
-        $params   = null,
+        $params = null,
         $defaults = null,
-        $index    = null
+        $index  = null
     ) {
         if( ! is_array( $valArr )) {
             $valArr = [];
@@ -803,10 +650,10 @@ abstract class IcalBase implements IcalInterface
      * @param mixed $propName
      * @param int   $propDelIx   specific property in case of multiply occurrence
      * @return bool   true on success
-     * @access protected
      * @since  2.27.1 - 2018-12-15
      */
-    protected function deletePropertyM( & $multiProp, $propName, $propDelIx = null ) {
+    protected function deletePropertyM( & $multiProp, $propName, $propDelIx = null )
+    {
         if( empty( $multiProp )) {
             unset( $this->propDelIx[$propName] );
             return false;
@@ -834,10 +681,14 @@ abstract class IcalBase implements IcalInterface
      * @param int    $propIx specific property in case of multiply occurrence
      * @param bool   $inclParam
      * @return bool|array
-     * @access protected
      * @since  2.27.1 - 2018-12-15
      */
-    protected function getPropertyM( $multiProp, $propName, $propIx = null, $inclParam = false ) {
+    protected function getPropertyM(
+        $multiProp,
+        $propName,
+        $propIx = null,
+        $inclParam = false
+    ) {
         if( empty( $multiProp )) {
             unset( $this->propIx[$propName] );
             return false;
@@ -855,7 +706,9 @@ abstract class IcalBase implements IcalInterface
             unset( $this->propIx[$propName] );
             return false;
         }
-        return ( $inclParam ) ? $multiProp[$propIx] : $multiProp[$propIx][Util::$LCvalue];
+        return ( $inclParam )
+            ? $multiProp[$propIx]
+            : $multiProp[$propIx][Util::$LCvalue];
     }
 
     /**
@@ -864,7 +717,8 @@ abstract class IcalBase implements IcalInterface
      * @return int
      * @since  2.23.5 - 2017-04-13
      */
-    public function countComponents() {
+    public function countComponents()
+    {
         return ( empty( $this->components )) ? 0 : count( $this->components );
     }
 
@@ -878,7 +732,8 @@ abstract class IcalBase implements IcalInterface
      * @since  2.26.14 - 2019-02-25
      * @todo Exception mgnt on unknown component
      */
-    public function deleteComponent( $arg1, $arg2 = false ) {
+    public function deleteComponent( $arg1, $arg2 = false )
+    {
         if( ! isset( $this->components )) {
             return false;
         }
@@ -888,10 +743,12 @@ abstract class IcalBase implements IcalInterface
             $index   = (int) $arg1 - 1;
         }
         elseif( property_exists( $this, self::getInternalPropName( self::PRODID )) &&
-            ( Util::isCompInList( $arg1, self::$MCOMPS ) &&
+            ( Util::isCompInList( $arg1, self::$CALCOMPS ) &&
             ( 0 != strcasecmp( $arg1, self::VALARM )))) {
             $argType = ucfirst( strtolower( $arg1 ));
-            $index   = ( ! empty( $arg2 ) && ctype_digit((string) $arg2 )) ? (( int ) $arg2 - 1 ) : 0;
+            $index   = ( ! empty( $arg2 ) && ctype_digit((string) $arg2 ))
+                ? (( int ) $arg2 - 1 )
+                : 0;
         }
         $cix2dC = 0;
         $remove = false;
@@ -932,10 +789,10 @@ abstract class IcalBase implements IcalInterface
      * Return next component index
      *
      * @return int
-     * @access protected
      * @since  2.27.2 - 2018-12-21
      */
-    protected function getNextComponentIndex() {
+    protected function getNextComponentIndex()
+    {
         return ( empty( $this->components ))
             ? 0
             : key( array_slice( $this->components, -1, 1, true )) + 1;
@@ -951,12 +808,16 @@ abstract class IcalBase implements IcalInterface
      * @return static
      * @since  2.27.3 - 2018-12-21
      */
-    public function setComponent( CalendarComponent $component, $arg1 = false, $arg2 = false ) {
+    public function setComponent(
+        CalendarComponent $component,
+        $arg1 = false,
+        $arg2 = false
+    ) {
         $component->setConfig( $this->getConfig(), false, true );
         if( ! Util::isCompInList( $component->getCompType(), self::$SUBCOMPS )) {
             /* make sure dtstamp and uid is set */
-            $component->getDtstamp();
             $component->getUid();
+            $component->getDtstamp();
         }
         if( ! $arg1 ) { // plain insert, last in chain
             self::assertComponents( $this, $component );
@@ -968,7 +829,7 @@ abstract class IcalBase implements IcalInterface
             $argType = self::$INDEX;
             $index   = (int) $arg1 - 1;
         }
-        elseif( Util::isCompInList( $arg1, self::$MCOMPS )) {
+        elseif( Util::isCompInList( $arg1, self::$CALCOMPS )) {
             $argType = ucfirst( strtolower( $arg1 ));
             $index   = ( ctype_digit((string) $arg2 )) ? ((int) $arg2 ) - 1 : 0;
         }
@@ -997,7 +858,7 @@ abstract class IcalBase implements IcalInterface
                 $this->components[$cix] = clone $component;
                 return $this;
             }
-        }
+        } // end foreach
         if( self::$INDEX == $argType ) { // arg1=index and not found.. . insert at index .. .
             $this->components[$index] = clone $component;
             ksort( $this->components, SORT_NUMERIC );
@@ -1012,12 +873,11 @@ abstract class IcalBase implements IcalInterface
      * Assert base components
      *
      * @param IcalBase $component
-     * @access protected
-     * @static
      * @throws InvalidArgumentException
      * @since  2.27.6 - 2018-12-28
      */
-    protected static function assertBaseComponents( IcalBase $component ) {
+    protected static function assertBaseComponents( IcalBase $component )
+    {
         static $ERRMSG = 'Invalid component type \'%s\'';
         $compType = $component->getCompType();
         if( ! Util::isCompInList( $compType, self::$VCOMPS ) &&
@@ -1032,11 +892,12 @@ abstract class IcalBase implements IcalInterface
      * @param IcalBase $comp
      * @param CalendarComponent $subComp
      * @throws InvalidArgumentException
-     * @access private
-     * @static
      * @since  2.27.6 - 2018-12-28
      */
-    private static function assertComponents( IcalBase $comp, CalendarComponent $subComp ) {
+    private static function assertComponents(
+        IcalBase $comp,
+        CalendarComponent $subComp
+    ) {
         static $MSG = 'Unknown component %s';
         $type    = $comp->getCompType();
         $subType = $subComp->getCompType();
@@ -1070,7 +931,6 @@ abstract class IcalBase implements IcalInterface
                 break;
             default :
                 throw new InvalidArgumentException( sprintf( $MSG, $type ));
-        }
+        } // end switch
     }
-
 }

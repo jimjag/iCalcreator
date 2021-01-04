@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -30,10 +30,11 @@
 
 namespace Kigkonsult\Icalcreator\Traits;
 
+use InvalidArgumentException;
+use Kigkonsult\Icalcreator\Vcalendar;
+use Kigkonsult\Icalcreator\Util\ParameterFactory;
 use Kigkonsult\Icalcreator\Util\StringFactory;
 use Kigkonsult\Icalcreator\Util\Util;
-use Kigkonsult\Icalcreator\Util\ParameterFactory;
-use InvalidArgumentException;
 
 use function is_bool;
 
@@ -41,22 +42,29 @@ use function is_bool;
  * DESCRIPTION property functions
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @since 2.27.3 2018-12-22
+ * @since 2.29.14 2019-09-03
  */
 trait DESCRIPTIONtrait
 {
     /**
      * @var array component property DESCRIPTION value
-     * @access protected
      */
     protected $description = null;
+
+    /**
+     * @var array
+     * @static
+     */
+    private static $MULTIDESCRCOMPS = [ Vcalendar::VCALENDAR, Vcalendar::VJOURNAL ];
 
     /**
      * Return formatted output for calendar component property description
      *
      * @return string
+     * @since 2.27.3 2018-12-22
      */
-    public function createDescription() {
+    public function createDescription()
+    {
         if( empty( $this->description )) {
             return null;
         }
@@ -66,7 +74,11 @@ trait DESCRIPTIONtrait
             if( ! empty( $description[Util::$LCvalue] )) {
                 $output .= StringFactory::createElement(
                     self::DESCRIPTION,
-                    ParameterFactory::createParams( $description[Util::$LCparams], self::$ALTRPLANGARR, $lang ),
+                    ParameterFactory::createParams(
+                        $description[Util::$LCparams],
+                        self::$ALTRPLANGARR,
+                        $lang
+                    ),
                     StringFactory::strrep( $description[Util::$LCvalue] )
                 );
             }
@@ -82,14 +94,22 @@ trait DESCRIPTIONtrait
      *
      * @param int   $propDelIx   specific property in case of multiply occurrence
      * @return bool
-     * @since  2.27.1 - 2018-12-15
+     * @since 2.29.5 2019-07-03
      */
-    public function deleteDescription( $propDelIx = null ) {
+    public function deleteDescription( $propDelIx = null )
+    {
         if( empty( $this->description )) {
             unset( $this->propDelIx[self::DESCRIPTION] );
             return false;
         }
-        return $this->deletePropertyM( $this->description, self::DESCRIPTION, $propDelIx );
+        if( ! Util::isCompInList( $this->getCompType(), self::$MULTIDESCRCOMPS )) {
+            $propDelIx = 1;
+        }
+        return $this->deletePropertyM(
+            $this->description,
+            self::DESCRIPTION,
+            $propDelIx
+        );
     }
 
     /**
@@ -98,20 +118,26 @@ trait DESCRIPTIONtrait
      * @param bool|int  $propIx specific property in case of multiply occurrence
      * @param bool      $inclParam
      * @return bool|array
-     * @since  2.27.1 - 2018-12-17
+     * @since 2.29.5 2019-07-03
      */
-    public function getDescription( $propIx = null, $inclParam = null ) {
+    public function getDescription( $propIx = null, $inclParam = null )
+    {
         if( empty( $this->description )) {
             unset( $this->propIx[self::DESCRIPTION] );
             return false;
         }
-        if( self::VJOURNAL != $this->getCompType()) {
+        if( ! Util::isCompInList( $this->getCompType(), self::$MULTIDESCRCOMPS )) {
             if( ! is_bool( $inclParam )) {
-                $inclParam = ( true == $propIx ) ? true : false; // note ==
+                $inclParam = ( true == $propIx ); // note ==
             }
-            $propIx = null;
+            $propIx = 1;
         }
-        return $this->getPropertyM( $this->description, self::DESCRIPTION, $propIx, $inclParam );
+        return $this->getPropertyM(
+            $this->description,
+            self::DESCRIPTION,
+            $propIx,
+            $inclParam
+        );
     }
 
     /**
@@ -122,18 +148,20 @@ trait DESCRIPTIONtrait
      * @param integer $index
      * @return static
      * @throws InvalidArgumentException
-     * @since 2.27.3 2018-12-22
+     * @since 2.29.14 2019-09-03
      */
-    public function setDescription( $value = null, $params = null, $index = null ) {
+    public function setDescription( $value = null, $params = [], $index = null )
+    {
         if( empty( $value )) {
             $this->assertEmptyValue( $value, self::DESCRIPTION );
             $value  = Util::$SP0;
             $params = [];
         }
-        if( self::VJOURNAL != $this->getCompType()) {
+        if( ! Util::isCompInList( $this->getCompType(), self::$MULTIDESCRCOMPS )) {
             $index = 1;
         }
-        $this->setMval( $this->description, $value, $params,null, $index );
+        Util::assertString( $value, self::DESCRIPTION );
+        $this->setMval( $this->description, (string) $value, $params,null, $index );
         return $this;
     }
 }

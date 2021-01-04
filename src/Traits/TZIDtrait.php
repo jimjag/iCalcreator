@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -45,7 +45,6 @@ trait TZIDtrait
 {
     /**
      * @var array component property TZID value
-     * @access protected
      */
     protected $tzid = null;
 
@@ -54,12 +53,15 @@ trait TZIDtrait
      *
      * @return string
      */
-    public function createTzid() {
+    public function createTzid()
+    {
         if( empty( $this->tzid )) {
             return null;
         }
         if( empty( $this->tzid[Util::$LCvalue] )) {
-            return ( $this->getConfig( self::ALLOWEMPTY )) ? StringFactory::createElement( self::TZID ) : null;
+            return $this->getConfig( self::ALLOWEMPTY )
+                ? StringFactory::createElement( self::TZID )
+                : null;
         }
         return StringFactory::createElement(
             self::TZID,
@@ -74,7 +76,8 @@ trait TZIDtrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deleteTzid() {
+    public function deleteTzid()
+    {
         $this->tzid = null;
         return true;
     }
@@ -86,7 +89,8 @@ trait TZIDtrait
      * @return bool|array
      * @since  2.27.1 - 2018-12-13
      */
-    public function getTzid( $inclParam = false ) {
+    public function getTzid( $inclParam = false )
+    {
         if( empty( $this->tzid )) {
             return false;
         }
@@ -102,15 +106,17 @@ trait TZIDtrait
      * @return static
      * @throws InvalidArgumentException
      * @since 2.27.3 2018-12-22
+     * @todo assert PHP timezone ?
      */
-    public function setTzid( $value = null, $params = null ) {
+    public function setTzid( $value = null, $params = [] )
+    {
         if( empty( $value )) {
             $this->assertEmptyValue( $value, self::TZID );
             $value  = Util::$SP0;
             $params = [];
         }
         $this->tzid = [
-            Util::$LCvalue  => trim( StringFactory::trimTrailNL( $value )),
+            Util::$LCvalue  => StringFactory::trimTrailNL( $value ),
             Util::$LCparams => ParameterFactory::setParams( $params ),
         ];
         return $this;

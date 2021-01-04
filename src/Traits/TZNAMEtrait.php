@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -39,13 +39,12 @@ use InvalidArgumentException;
  * TZNAME property functions
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
-return $this;
+ * @since 2.29.14 2019-09-03
  */
 trait TZNAMEtrait
 {
     /**
      * @var array component property TZNAME value
-     * @access protected
      */
     protected $tzname = null;
 
@@ -54,7 +53,8 @@ trait TZNAMEtrait
      *
      * @return string
      */
-    public function createTzname() {
+    public function createTzname()
+    {
         if( empty( $this->tzname )) {
             return null;
         }
@@ -64,14 +64,18 @@ trait TZNAMEtrait
             if( ! empty( $theName[Util::$LCvalue] )) {
                 $output .= StringFactory::createElement(
                     self::TZNAME,
-                    ParameterFactory::createParams( $theName[Util::$LCparams], [ self::LANGUAGE ], $lang ),
+                    ParameterFactory::createParams(
+                        $theName[Util::$LCparams],
+                        [ self::LANGUAGE ],
+                        $lang
+                    ),
                     StringFactory::strrep( $theName[Util::$LCvalue] )
                 );
             }
             elseif( $this->getConfig( self::ALLOWEMPTY )) {
                 $output .= StringFactory::createElement( self::TZNAME );
             }
-        }
+        } // end foreach
         return $output;
     }
 
@@ -82,7 +86,8 @@ trait TZNAMEtrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deleteTzname( $propDelIx = null ) {
+    public function deleteTzname( $propDelIx = null )
+    {
         if( empty( $this->tzname )) {
             unset( $this->propDelIx[self::TZNAME] );
             return false;
@@ -98,7 +103,8 @@ trait TZNAMEtrait
      * @return bool|array
      * @since  2.27.1 - 2018-12-12
      */
-    public function getTzname( $propIx = null, $inclParam = false ) {
+    public function getTzname( $propIx = null, $inclParam = false )
+    {
         if( empty( $this->tzname )) {
             unset( $this->propIx[self::TZNAME] );
             return false;
@@ -114,15 +120,23 @@ trait TZNAMEtrait
      * @param integer $index
      * @return static
      * @throws InvalidArgumentException
-     * @since 2.27.3 2018-12-22
+     * @since 2.29.14 2019-09-03
      */
-    public function setTzname( $value = null, $params = null, $index = null ) {
+    public function setTzname( $value = null, $params = [], $index = null )
+    {
         if( empty( $value )) {
             $this->assertEmptyValue( $value, self::TZNAME );
             $value  = Util::$SP0;
             $params = [];
         }
-        $this->setMval( $this->tzname, StringFactory::trimTrailNL( $value ), $params, null, $index );
+        Util::assertString( $value, self::TZNAME );
+        $this->setMval(
+            $this->tzname,
+            StringFactory::trimTrailNL( $value ),
+            $params,
+            null,
+            $index
+        );
         return $this;
     }
 }

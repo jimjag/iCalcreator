@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -48,7 +48,6 @@ trait STATUStrait
 {
     /**
      * @var array component property STATUS value
-     * @access protected
      */
     protected $status = null;
 
@@ -57,12 +56,15 @@ trait STATUStrait
      *
      * @return string
      */
-    public function createStatus() {
+    public function createStatus()
+    {
         if( empty( $this->status )) {
             return null;
         }
         if( empty( $this->status[Util::$LCvalue] )) {
-            return ( $this->getConfig( self::ALLOWEMPTY )) ? StringFactory::createElement( self::STATUS ) : null;
+            return $this->getConfig( self::ALLOWEMPTY )
+                ? StringFactory::createElement( self::STATUS )
+                : null;
         }
         return StringFactory::createElement(
             self::STATUS,
@@ -77,7 +79,8 @@ trait STATUStrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deleteStatus() {
+    public function deleteStatus()
+    {
         $this->status = null;
         return true;
     }
@@ -89,7 +92,8 @@ trait STATUStrait
      * @return bool|array
      * @since  2.27.1 - 2018-12-12
      */
-    public function getStatus( $inclParam = false ) {
+    public function getStatus( $inclParam = false )
+    {
         if( empty( $this->status )) {
             return false;
         }
@@ -103,9 +107,10 @@ trait STATUStrait
      * @param array  $params
      * @return static
      * @throws InvalidArgumentException
-     * @since 2.27.2 2019-03-14
+     * @since 2.29.14 2019-09-03
      */
-    public function setStatus( $value = null, $params = null ) {
+    public function setStatus( $value = null, $params = [] )
+    {
         static $ALLOWED_VEVENT = [
             self::CONFIRMED,
             self::CANCELLED,
@@ -122,7 +127,7 @@ trait STATUStrait
             self::DRAFT,
             self::F_NAL,
         ];
-
+        $value = strtoupper( StringFactory::trimTrailNL( $value ));
         switch( true ) {
             case ( empty( $value )) :
                 $this->assertEmptyValue( $value, self::STATUS );
@@ -130,17 +135,17 @@ trait STATUStrait
                 $params = [];
                 break;
             case ( Vcalendar::VEVENT == $this->getCompType()) :
-                self::assertInEnumeration( $value, $ALLOWED_VEVENT, self::STATUS );
+                Util::assertInEnumeration( $value, $ALLOWED_VEVENT, self::STATUS );
                 break;
             case ( Vcalendar::VTODO == $this->getCompType()) :
-                self::assertInEnumeration( $value, $ALLOWED_VTODO, self::STATUS );
+                Util::assertInEnumeration( $value, $ALLOWED_VTODO, self::STATUS );
                 break;
             case ( Vcalendar::VJOURNAL == $this->getCompType()) :
-                self::assertInEnumeration( $value, $ALLOWED_VJOURNAL, self::STATUS );
+                Util::assertInEnumeration( $value, $ALLOWED_VJOURNAL, self::STATUS );
                 break;
-        }
+        } // end switch
         $this->status = [
-            Util::$LCvalue  => strtoupper( StringFactory::trimTrailNL( $value )),
+            Util::$LCvalue  => $value ,
             Util::$LCparams => ParameterFactory::setParams( $params ),
         ];
         return $this;

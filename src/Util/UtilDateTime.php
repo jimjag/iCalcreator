@@ -2,10 +2,10 @@
 /**
   * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -30,13 +30,12 @@
 
 namespace Kigkonsult\Icalcreator\Util;
 
-use Kigkonsult\Icalcreator\Vcalendar;
 use DateTime;
 use DateTimeZone;
 use Exception;
+use Kigkonsult\Icalcreator\Vcalendar;
 use RuntimeException;
 
-use function date_default_timezone_get;
 use function explode;
 use function get_object_vars;
 use function is_array;
@@ -48,12 +47,10 @@ use function substr;
  * iCalcreator DateTime support class
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @since  2.27.8 - 2019-01-12
+ * @since  2.29.1 - 2019-07-01
  */
 class UtilDateTime extends DateTime
 {
-
-
     /**
      * @var string default object instance date[-time] 'key'
      */
@@ -77,7 +74,8 @@ class UtilDateTime extends DateTime
      * @throws Exception
      * @since  2.27.8 - 2019-01-12
      */
-    public function __construct( $time = "now" , DateTimeZone $timezone = null ) {
+    public function __construct( $time = "now" , DateTimeZone $timezone = null )
+    {
         parent::__construct( $time, $timezone );
         $this->dateFormat = DateTimeFactory::$YMDHISe;
     }
@@ -111,7 +109,8 @@ class UtilDateTime extends DateTime
      * @return static
      * @since  2.26.2 - 2018-11-14
      */
-    public function getClone() {
+    public function getClone()
+    {
         return clone $this;
     }
 
@@ -121,7 +120,8 @@ class UtilDateTime extends DateTime
      * @return array
      * @since  2.23.20 - 2017-02-07
      */
-    public function getTime() {
+    public function getTime()
+    {
         static $H_I_S = 'H:i:s';
         $res = [];
         foreach( explode( Util::$COLON, $this->format( $H_I_S )) as $t ) {
@@ -136,7 +136,8 @@ class UtilDateTime extends DateTime
      * @param string $YmdHisString
      * @since  2.26.2 - 2018-11-14
      */
-    public function setDateTimeFromString( $YmdHisString ) {
+    public function setDateTimeFromString( $YmdHisString )
+    {
         $this->setDate(
             (int) substr( $YmdHisString, 0, 4 ),
             (int) substr( $YmdHisString, 4, 2 ),
@@ -155,7 +156,8 @@ class UtilDateTime extends DateTime
      * @return string
      * @since  2.21.7 - 2015-03-07
      */
-    public function getTimezoneName() {
+    public function getTimezoneName()
+    {
         $tz = $this->getTimezone();
         return $tz->getName();
     }
@@ -167,7 +169,8 @@ class UtilDateTime extends DateTime
      * @return string
      * @since  2.21.7 - 2015-03-07
      */
-    public function format( $format = null ) {
+    public function format( $format = null )
+    {
         if( empty( $format ) && isset( $this->dateFormat )) {
             $format = $this->dateFormat;
         }
@@ -177,70 +180,63 @@ class UtilDateTime extends DateTime
     /**
      * Return UtilDateTime object instance based on date array and timezone(s)
      *
-     * @param array  $date
-     * @param array  $params
-     * @param array  $tz
-     * @param string $dtstartTz
+     * @param DateTime $date
+     * @param array    $params
+     * @param string   $dtstartTz
      * @return static
      * @throws Exception
      * @throws RuntimeException
      * @static
-     * @since  2.27.2 - 2018-12-29
+     * @since  2.29.1 - 2019-07-01
      */
-    public static function factory( array $date, $params = null, $tz = null, $dtstartTz = null ) {
-        static $YMDHIS = 'YmdHis';
-        static $YMD    = 'Ymd';
+    public static function factory( DateTime $date, $params = null, $dtstartTz = null )
+    {
         static $Y_M_D  = 'Y-m-d';
-        static $T      = 'T';
         static $MSG1   = '#%d Can\'t create DateTimeZone from \'%s\'';
-        static $MSG2   = '#%d Can\'t create (to-)DateTime : \'%s\' and \'%s\'';
+        static $MSG2   = '#%d Can\'t create (to-)DateTime : \'%s\'';
         static $MSG4   = '#%s Can\'t set DateTimeZone \'%s\'';
-        if( isset( $params[Vcalendar::TZID] ) && ! empty( $params[Vcalendar::TZID] )) {
-            $tz = ( Vcalendar::Z == $params[Vcalendar::TZID] ) ? Vcalendar::UTC : $params[Vcalendar::TZID];
-        }
-        elseif( isset( $tz[Util::$LCtz] ) && ! empty( $tz[Util::$LCtz] )) {
-            $tz = ( Vcalendar::Z == $tz[Util::$LCtz] ) ? Vcalendar::UTC : $tz[Util::$LCtz];
-        }
-        else {
-            $tz = date_default_timezone_get();
-        }
-        $strDate = DateTimeFactory::getYMDString( $date );
-        if( isset( $date[Util::$LCHOUR] )) {
-            $strDate .= $T;
-            $strDate .= DateTimeFactory::getHisString( $date );
-        }
+
+        $YmdHise = $date->format( DateTimeFactory::$YMDHISe );
         try {
-            $timeZone = DateTimeZoneFactory::factory( $tz );
-            $iCaldateTime = new UtilDateTime( $strDate, $timeZone );
+            $iCaldateTime = new UtilDateTime( $YmdHise );
         }
         catch( Exception $e ) {
-            throw new RuntimeException( sprintf( $MSG2, 3, $strDate, $tz ), null, $e ); // -- #3
+            throw new RuntimeException( sprintf( $MSG2, 3, $YmdHise ), null, $e ); // -- #1
         }
-        if( ! empty( $dtstartTz )) {
-            if( Vcalendar::Z == $dtstartTz ) {
-                $dtstartTz = Vcalendar::UTC;
-            }
+        if( Vcalendar::Z == $dtstartTz ) {
+            $dtstartTz = Vcalendar::UTC;
+        }
+        if( ! empty( $dtstartTz ) &&
+            ( $dtstartTz != $iCaldateTime->getTimezone()->getName())) {
             // set the same timezone as dtstart
             if( $dtstartTz != $iCaldateTime->getTimezoneName()) {
                 try {
                     $timeZone = DateTimeZoneFactory::factory( $dtstartTz );
                 }
                 catch( Exception $e ) {
-                    throw new RuntimeException( sprintf( $MSG1, 5, $dtstartTz ), null, $e ); // -- #5
+                    throw new RuntimeException( // -- #2
+                        sprintf( $MSG1, 5, $dtstartTz ),
+                        null,
+                        $e
+                    );
                 }
                 if( false === $iCaldateTime->setTimezone( $timeZone )) {
-                    throw new RuntimeException( sprintf( $MSG4, 6, $dtstartTz )); // -- #6
+                    throw new RuntimeException(  // -- #3
+                        sprintf( $MSG4, 6, $dtstartTz )
+                    );
                 }
             }
-        }
-        if( ParameterFactory::isParamsValueSet( [ Util::$LCparams => $params ], Vcalendar::DATE )) {
+        } // end if
+        if( ParameterFactory::isParamsValueSet(
+            [ Util::$LCparams => $params ],
+            Vcalendar::DATE )
+        ) {
             $iCaldateTime->dateFormat = $Y_M_D;
-            $iCaldateTime->key        = $iCaldateTime->format( $YMD );
+            $iCaldateTime->key        = $iCaldateTime->format( DateTimeFactory::$Ymd );
         }
         else {
-            $iCaldateTime->key = $iCaldateTime->format( $YMDHIS );
+            $iCaldateTime->key = $iCaldateTime->format( DateTimeFactory::$YmdHis );
         }
         return $iCaldateTime;
     }
-
 }

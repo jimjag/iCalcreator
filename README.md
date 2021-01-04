@@ -2,7 +2,7 @@
 
 is the PHP class package managing
 
-> iCal (rfc2445/rfc5545) calendar information
+> iCal (rfc2445, rfc5545, rfc6321, rfc7986) calendar information
 
 operating on calendar and
 calendar events, reports, todos and journaling data.
@@ -17,24 +17,22 @@ iCalcreator supports systems like
 * other applications...
 
 ~~~~~~~~
-__Builds__
 
-Please review the releaseNotes for a brief overview, 
+Please review the releaseNotes for release brief overview, 
 docs/summary and docs/using for details.
 
-Stable 2.28 *(master)*.
+###### Builds
 
-Release 2.30 candidate (tag 2.29.8)
+v2.30 - *(master)* stable
 
-Unsupported (tags): 
-- 2.26.9
-- 2.26
-- 2.24.2
-- 2.24
-- 2.22.5
+Note, v2.29.25 and later asserts PHP 7+ compability using <a href="https://github.com/PHPCompatibility/PHPCompatibility">PHPCompatibility</a>
 
+###### Sponsorship
 
-Brief 2.28 demo :
+Donation using <a href="https://paypal.me/kigkonsult" rel="nofollow">paypal.me/kigkonsult</a> are appreciated. 
+For invoice, <a href="mailto:ical@kigkonsult.se">please e-mail</a>.
+
+###### Usage
 
 ``` php
 <?php
@@ -278,3 +276,7 @@ END:VALARM
 END:VEVENT
 END:VCALENDAR
 ```
+###### License
+
+iCalcreator is licensed under the LGPLv3 License.
+

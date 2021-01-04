@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -30,27 +30,28 @@
 
 namespace Kigkonsult\Icalcreator\Traits;
 
-use Kigkonsult\Icalcreator\Util\StringFactory;
-use Kigkonsult\Icalcreator\Vcalendar;
-use Kigkonsult\Icalcreator\Util\Util;
+use DateTime;
+use DateTimeInterface;
+use Exception;
+use InvalidArgumentException;
 use Kigkonsult\Icalcreator\Util\DateTimeFactory;
 use Kigkonsult\Icalcreator\Util\ParameterFactory;
-use InvalidArgumentException;
+use Kigkonsult\Icalcreator\Util\StringFactory;
+use Kigkonsult\Icalcreator\Util\Util;
+use Kigkonsult\Icalcreator\Vcalendar;
 
 use function array_change_key_case;
-use function is_array;
 
 /**
  * COMPLETED property functions
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @since 2.27.14 2019-01-28
+ * @since 2.29.16 2020-01-24
  */
 trait COMPLETEDtrait
 {
     /**
      * @var array component property COMPLETED value
-     * @access protected
      */
     protected $completed = null;
 
@@ -58,19 +59,24 @@ trait COMPLETEDtrait
      * Return formatted output for calendar component property completed
      *
      * @return string
-     * @since  2.27.14 - 2019-01-26
+     * @throws Exception
+     * @throws InvalidArgumentException
+     * @since 2.29.1 2019-06-22
      */
-    public function createCompleted() {
+    public function createCompleted()
+    {
         if( empty( $this->completed )) {
             return null;
         }
-        if( DateTimeFactory::hasNoDate( $this->completed )) {
-            return ( $this->getConfig( self::ALLOWEMPTY )) ? StringFactory::createElement( self::COMPLETED ) : null;
+        if( empty( $this->completed[Util::$LCvalue] )) {
+            return $this->getConfig( self::ALLOWEMPTY )
+                ? StringFactory::createElement( self::COMPLETED )
+                : null;
         }
         return StringFactory::createElement(
             self::COMPLETED,
             ParameterFactory::createParams( $this->completed[Util::$LCparams] ),
-            DateTimeFactory::dateArrayToStr( $this->completed[Util::$LCvalue] )
+            DateTimeFactory::dateTime2Str( $this->completed[Util::$LCvalue] )
         );
     }
 
@@ -80,19 +86,21 @@ trait COMPLETEDtrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deleteCompleted( ) {
+    public function deleteCompleted( )
+    {
         $this->completed = null;
         return true;
     }
 
     /**
-     * Get calendar component property completed
+     * Return calendar component property completed
      *
      * @param bool   $inclParam
-     * @return bool|array
+     * @return bool|DateTime|array
      * @since  2.27.1 - 2018-12-12
      */
-    public function getCompleted( $inclParam = false ) {
+    public function getCompleted( $inclParam = false )
+    {
         if( empty( $this->completed )) {
             return false;
         }
@@ -102,28 +110,15 @@ trait COMPLETEDtrait
     /**
      * Set calendar component property completed
      *
-     * @param mixed  $value
-     * @param mixed  $month
-     * @param int    $day
-     * @param int    $hour
-     * @param int    $min
-     * @param int    $sec
-     * @param string $tz
-     * @param array  $params
+     * @param string|DateTimeInterface $value
+     * @param array           $params
      * @return static
+     * @throws Exception
      * @throws InvalidArgumentException
-     * @since 2.27.14 2019-01-29
+     * @since 2.29.16 2020-01-24
      */
-    public function setCompleted(
-        $value  = null,
-        $month  = null,
-        $day    = null,
-        $hour   = null,
-        $min    = null,
-        $sec    = null,
-        $tz     = null,
-        $params = null
-    ) {
+    public function setCompleted( $value = null, $params = [] )
+    {
         if( empty( $value )) {
             $this->assertEmptyValue( $value, self::COMPLETED );
             $this->completed = [
@@ -132,24 +127,9 @@ trait COMPLETEDtrait
             ];
             return $this;
         }
-        if( DateTimeFactory::isArgsDate( $value, $month, $day )) {
-            $value = DateTimeFactory::argsToStr( $value, $month, $day, $hour, $min, $sec, $tz );
-            if( is_array( $params )) {
-                $month = $params;
-            }
-            else {
-                $month = ( is_array( $hour )) ? $hour : [];
-            }
-        }
-        elseif( ! is_array( $month )) {
-            $month = [];
-        }
-        $month[Vcalendar::VALUE] = Vcalendar::DATE_TIME;
-        $this->completed = DateTimeFactory::setDate(
-            $value,
-            array_change_key_case( $month, CASE_UPPER ),
-            true // $forceUTC
-        );
+        $params = array_change_key_case( $params, CASE_UPPER );
+        $params[Vcalendar::VALUE] = Vcalendar::DATE_TIME;
+        $this->completed = DateTimeFactory::setDate( $value, $params, true ); // $forceUTC
         return $this;
     }
 }

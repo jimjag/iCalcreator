@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -30,10 +30,9 @@
 
 namespace Kigkonsult\Icalcreator;
 
-use PHPUnit\Framework\TestCase;
 use Kigkonsult\Icalcreator\Util\DateTimeFactory;
 use Kigkonsult\Icalcreator\Util\RecurFactory;
-use Kigkonsult\Icalcreator\Util\Util;
+use Kigkonsult\Icalcreator\Util\RecurFactory2;
 use DateTime;
 use Exception;
 
@@ -41,7 +40,7 @@ use Exception;
  * class RecurTest, testing selectComponents
  *
  * @author      Kjell-Inge Gustafsson <ical@kigkonsult.se>
- * @since  2.27.20 - 2019-05-20
+ * @since  2.29.29 - 2020-09-11
  */
 class RecurWeekTest extends RecurBaseTest
 {
@@ -54,7 +53,7 @@ class RecurWeekTest extends RecurBaseTest
         $dataArr = [];
 
         $interval = 1;
-        for( $ix = 311; $ix <= 319; $ix++ ) {
+        for( $ix = 301; $ix <= 309; $ix++ ) {
             $time    = microtime( true );
             $start   = DateTimeFactory::factory( '20190101T0900', 'Europe/Stockholm' );
             $wDate   = clone $start;
@@ -77,6 +76,35 @@ class RecurWeekTest extends RecurBaseTest
                 ],
                 $expects,
                 $execTime
+            ];
+            $interval += 2;
+        }
+
+        // same as above but with BYDAY MO
+        $interval = 1;
+        $expects = [
+            311 => [ 20200914, 20200921, 20200928, 20201005 ],
+            312 => [ 20200928, 20201019, 20201109, 20201130 ],
+            313 => [ 20201012, 20201116, 20201221, 20210125 ],
+            314 => [ 20201026, 20201214, 20210201, 20210322 ],
+            315 => [ 20201109, 20210111, 20210315, 20210517 ]
+        ];
+        for( $ix = 311; $ix <= 315; $ix++ ) {
+            $time    = microtime( true );
+            $start   = DateTimeFactory::factory( '20200909', 'Europe/Stockholm' );
+            $count   = 5;
+            $dataArr[] = [
+                $ix . '-' . $interval,
+                $start,
+                (clone $start)->modify( RecurFactory::EXTENDYEAR . ' year' ),
+                [
+                    Vcalendar::FREQ     => Vcalendar::WEEKLY,
+                    Vcalendar::COUNT    => $count,
+                    Vcalendar::INTERVAL => $interval,
+                    Vcalendar::BYDAY    => [ [ Vcalendar::DAY => Vcalendar::MO ] ]
+                ],
+                $expects[$ix],
+                0.0
             ];
             $interval += 2;
         }
@@ -113,7 +141,7 @@ class RecurWeekTest extends RecurBaseTest
                 $end,
                 [
                     Vcalendar::FREQ     => Vcalendar::WEEKLY,
-                    Vcalendar::UNTIL    => DateTimeFactory::getDateArrayFromDateTime( $end ),
+                    Vcalendar::UNTIL    => clone $end,
                     Vcalendar::INTERVAL => $interval,
                     Vcalendar::BYDAY    => [
                         [ Vcalendar::DAY => Vcalendar::TH ],
@@ -153,7 +181,7 @@ class RecurWeekTest extends RecurBaseTest
                 $end,
                 [
                     Vcalendar::FREQ     => Vcalendar::WEEKLY,
-                    Vcalendar::UNTIL    => DateTimeFactory::getDateArrayFromDateTime( $end ),
+                    Vcalendar::UNTIL    => clone $end,
                     Vcalendar::INTERVAL => $interval,
                     Vcalendar::BYMONTH  => $byMonth
                 ],
@@ -187,7 +215,6 @@ class RecurWeekTest extends RecurBaseTest
                 switch( true ) {
                     case( $Ymd <= $startYmd ) :
                         $wDate = $wDate->modify( '1 day' );
-                        continue;
                         break;
                     case( $endYmd < $Ymd ) :
                         break 2;
@@ -198,7 +225,7 @@ class RecurWeekTest extends RecurBaseTest
                             }
                         }
                         $wDate = $wDate->modify( '1 day' );
-                        continue;
+                        break;
                     default :
                         // now is the first day of next week
                         if( 1 < $interval ) {
@@ -214,7 +241,7 @@ class RecurWeekTest extends RecurBaseTest
                 $end,
                 [
                     Vcalendar::FREQ     => Vcalendar::WEEKLY,
-                    Vcalendar::UNTIL    => DateTimeFactory::getDateArrayFromDateTime( $end ),
+                    Vcalendar::UNTIL    => clone $end,
                     Vcalendar::INTERVAL => $interval,
                     Vcalendar::BYMONTH  => $byMonth,
                     Vcalendar::BYDAY    => [
@@ -256,25 +283,33 @@ class RecurWeekTest extends RecurBaseTest
         $prepTime ) {
         $saveStartDate = clone $start;
 
-        $result = $this->recur2dateTest(
-            $case,
-            $start,
-            $end,
-            $recur,
-            $expects,
-            $prepTime
-        );
+        $case3 = substr( $case, 0, 3 );
+        if(( '311' <= $case3 ) && ( '319' >= $case3 )) {
+            $result = array_flip( $expects );
+        }
+        else {
+            $result = $this->recur2dateTest(
+                $case,
+                $start,
+                $end,
+                $recur,
+                $expects,
+                $prepTime
+            );
+        }
 
         if( ! isset( $recur[Vcalendar::INTERVAL] )) {
             $recur[Vcalendar::INTERVAL] = 1;
         }
-        if( RecurFactory::isSimpleWeeklyRecur1( $recur )) {
+        $strCase  = str_pad( $case, 12 );
+        $recurDisp = str_replace( [PHP_EOL, ' ' ], '', var_export( $recur, true ));
+        if( RecurFactory2::isRecurWeekly1( $recur )) {
             $time     = microtime( true );
-            $resultX  = RecurFactory::recurWeeklySimple1( $recur, $start, clone $start, $end );
+            $resultX  = RecurFactory2::recurWeekly1( $recur, $start, clone $start, $end );
             $execTime = microtime( true ) - $time;
-            $strCase  = str_pad( $case, 12 );
             echo $strCase . 'week smpl1 time:' . number_format( $execTime, 6 ) . ' : ' .
                 implode( ' - ', array_keys( $resultX )) . PHP_EOL; // test ###
+            echo $recurDisp . PHP_EOL; // test ###
             $this->assertEquals(
                 array_keys( $result ),
                 array_keys( $resultX ),
@@ -285,13 +320,13 @@ class RecurWeekTest extends RecurBaseTest
                 )
             );
         }
-        elseif( RecurFactory::isSimpleWeeklyRecur2( $recur )) {
+        elseif( RecurFactory2::isRecurWeekly2( $recur )) {
             $time     = microtime( true );
-            $resultX  = RecurFactory::recurWeeklySimple2( $recur, $start, clone $start, $end );
+            $resultX  = RecurFactory2::recurWeekly2( $recur, $start, clone $start, $end );
             $execTime = microtime( true ) - $time;
-            $strCase  = str_pad( $case, 12 );
             echo $strCase . 'week smpl2 time:' . number_format( $execTime, 6 ) . ' : ' .
-                implode( ' - ', array_keys( $resultX )) . PHP_EOL; // test ###
+                implode( ' - ', array_keys( $resultX ) ) . PHP_EOL; // test ###
+            echo $recurDisp . PHP_EOL; // test ###
             $this->assertEquals(
                 array_keys( $result ),
                 array_keys( $resultX ),
@@ -301,6 +336,10 @@ class RecurWeekTest extends RecurBaseTest
                          var_export( $recur, true )
                 )
             );
+        }
+        else {
+            echo $strCase . ' NOT isRecurWeekly1/2 ' . $recurDisp . PHP_EOL;
+            $this->assertTrue( false );
         }
     }
 

@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -46,7 +46,6 @@ trait SEQUENCEtrait
 {
     /**
      * @var array component property SEQUENCE value
-     * @access protected
      */
     protected $sequence = null;
 
@@ -55,14 +54,18 @@ trait SEQUENCEtrait
      *
      * @return string
      */
-    public function createSequence() {
+    public function createSequence()
+    {
         if( empty( $this->sequence )) {
             return null;
         }
         if(( ! isset( $this->sequence[Util::$LCvalue] ) ||
-                ( empty( $this->sequence[Util::$LCvalue] ) && ! is_numeric( $this->sequence[Util::$LCvalue] ))) &&
+                ( empty( $this->sequence[Util::$LCvalue] ) &&
+                    ! is_numeric( $this->sequence[Util::$LCvalue] ))) &&
                 ( Util::$ZERO != $this->sequence[Util::$LCvalue] )) {
-            return ( $this->getConfig( self::ALLOWEMPTY )) ? StringFactory::createElement( self::SEQUENCE ) : null;
+            return $this->getConfig( self::ALLOWEMPTY )
+                ? StringFactory::createElement( self::SEQUENCE )
+                : null;
         }
         return StringFactory::createElement(
             self::SEQUENCE,
@@ -77,7 +80,8 @@ trait SEQUENCEtrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deleteSequence() {
+    public function deleteSequence()
+    {
         $this->sequence = null;
         return true;
     }
@@ -89,7 +93,8 @@ trait SEQUENCEtrait
      * @return bool|array
      * @since  2.27.1 - 2018-12-12
      */
-    public function getSequence( $inclParam = false ) {
+    public function getSequence( $inclParam = false )
+    {
         if( empty( $this->sequence )) {
             return false;
         }
@@ -104,7 +109,8 @@ trait SEQUENCEtrait
      * @return static
      * @since  2.27.2 - 2019-01-04
      */
-    public function setSequence( $value = null, $params = null ) {
+    public function setSequence( $value = null, $params = [] )
+    {
         if(( empty( $value ) && ! is_numeric( $value )) && ( Util::$ZERO != $value )) {
             $value = ( isset( $this->sequence[Util::$LCvalue] ) &&
                 ( -1 < $this->sequence[Util::$LCvalue] ))
@@ -112,7 +118,7 @@ trait SEQUENCEtrait
                 : Util::$ZERO;
         }
         else {
-            self::assertIsInteger( $value, self::SEQUENCE );
+            Util::assertInteger( $value, self::SEQUENCE );
         }
         $this->sequence = [
             Util::$LCvalue  => $value,

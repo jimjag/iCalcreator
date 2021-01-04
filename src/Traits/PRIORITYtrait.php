@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -45,7 +45,6 @@ trait PRIORITYtrait
 {
     /**
      * @var array component property PRIORITY value
-     * @access protected
      */
     protected $priority = null;
 
@@ -54,13 +53,17 @@ trait PRIORITYtrait
      *
      * @return string
      */
-    public function createPriority() {
+    public function createPriority()
+    {
         if( empty( $this->priority )) {
             return null;
         }
         if( ! isset( $this->priority[Util::$LCvalue] ) ||
-            ( empty( $this->priority[Util::$LCvalue] ) && ! is_numeric( $this->priority[Util::$LCvalue] ))) {
-            return ( $this->getConfig( self::ALLOWEMPTY )) ? StringFactory::createElement( self::PRIORITY ) : null;
+            ( empty( $this->priority[Util::$LCvalue] ) &&
+                ! is_numeric( $this->priority[Util::$LCvalue] ))) {
+            return $this->getConfig( self::ALLOWEMPTY )
+                ? StringFactory::createElement( self::PRIORITY )
+                : null;
         }
         return StringFactory::createElement(
             self::PRIORITY,
@@ -75,7 +78,8 @@ trait PRIORITYtrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deletePriority() {
+    public function deletePriority()
+    {
         $this->priority = null;
         return true;
     }
@@ -87,7 +91,8 @@ trait PRIORITYtrait
      * @return bool|array
      * @since  2.27.1 - 2018-12-12
      */
-    public function getPriority( $inclParam = false ) {
+    public function getPriority( $inclParam = false )
+    {
         if( empty( $this->priority )) {
             return false;
         }
@@ -103,7 +108,8 @@ trait PRIORITYtrait
      * @throws InvalidArgumentException
      * @since 2.27.2 2019-01-03
      */
-    public function setPriority( $value = null, $params = null ) {
+    public function setPriority( $value = null, $params = [] )
+    {
         if( empty( $value ) && ( Util::$ZERO != $value )) {
             $this->assertEmptyValue( $value, self::PRIORITY );
             $value  = Util::$SP0;
@@ -111,7 +117,7 @@ trait PRIORITYtrait
 
         }
         else {
-            self::assertIsInteger( $value, self::PRIORITY, 0, 9 );
+            Util::assertInteger( $value, self::PRIORITY, 0, 9 );
         }
         $this->priority = [
             Util::$LCvalue  => $value,

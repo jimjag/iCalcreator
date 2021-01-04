@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -30,26 +30,23 @@
 
 namespace Kigkonsult\Icalcreator\Traits;
 
-use Kigkonsult\Icalcreator\Util\DateTimeFactory;
-use Kigkonsult\Icalcreator\Util\Util;
-use Kigkonsult\Icalcreator\Util\RexdateFactory;
-use DateTime;
+use DateTimeInterface;
+use Exception;
 use InvalidArgumentException;
-
-use function is_scalar;
+use Kigkonsult\Icalcreator\Util\DateTimeFactory;
+use Kigkonsult\Icalcreator\Util\RexdateFactory;
+use Kigkonsult\Icalcreator\Util\Util;
 
 /**
  * EXDATE property functions
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @throws InvalidArgumentException
- * @since 2.27.10 2018-12-29
+ * @since 2.29.2 2019-06-23
  */
 trait EXDATEtrait
 {
     /**
      * @var array component property EXDATE value
-     * @access protected
      */
     protected $exdate = null;
 
@@ -57,12 +54,18 @@ trait EXDATEtrait
      * Return formatted output for calendar component property exdate
      *
      * @return string
+     * @throws Exception
+     * @throws InvalidArgumentException
      */
-    public function createExdate() {
+    public function createExdate()
+    {
         if( empty( $this->exdate )) {
             return null;
         }
-        return RexdateFactory::formatExdate( $this->exdate, $this->getConfig( self::ALLOWEMPTY ));
+        return RexdateFactory::formatExdate(
+            $this->exdate,
+            $this->getConfig( self::ALLOWEMPTY )
+        );
     }
 
     /**
@@ -72,7 +75,8 @@ trait EXDATEtrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deleteExdate( $propDelIx = null ) {
+    public function deleteExdate( $propDelIx = null )
+    {
         if( empty( $this->exdate )) {
             unset( $this->propDelIx[self::EXDATE] );
             return false;
@@ -88,7 +92,8 @@ trait EXDATEtrait
      * @return bool|array
      * @since  2.27.1 - 2018-12-12
      */
-    public function getExdate( $propIx = null, $inclParam = false ) {
+    public function getExdate( $propIx = null, $inclParam = false )
+    {
         if( empty( $this->exdate )) {
             unset( $this->propIx[self::EXDATE] );
             return false;
@@ -99,54 +104,50 @@ trait EXDATEtrait
     /**
      * Set calendar component property exdate
      *
-     * @param mixed   $value
+     * @param string|string[]|DateTimeInterface|DateTimeInterface[] $value
      * @param array   $params
      * @param integer $index
      * @return static
+     * @throws Exception
      * @throws InvalidArgumentException
-     * @since 2.27.14 2019-02-10
+     * @since 2.29.16 2020-01-24
      */
-    public function setExdate( $value = null, $params = null, $index = null ) {
-        if( empty( $value ) || ( is_array( $value) && ( 1 == count( $value )) && empty( reset( $value )))) {
+    public function setExdate( $value = null, $params = [], $index = null )
+    {
+        if( empty( $value ) ||
+            ( is_array( $value) && ( 1 == count( $value )) && empty( reset( $value )))
+        ) {
             $this->assertEmptyValue( $value, self::EXDATE );
             $this->setMval( $this->exdate, Util::$SP0, [], null, $index );
             return $this;
         }
         $value = self::checkSingleExdates( $value );
         $input = RexdateFactory::prepInputExdate( $value, $params );
-        $this->setMval( $this->exdate, $input[Util::$LCvalue], $input[Util::$LCparams],null, $index );
+        $this->setMval(
+            $this->exdate,
+            $input[Util::$LCvalue],
+            $input[Util::$LCparams],
+            null,
+            $index
+        );
         return $this;
     }
 
     /**
      * Return $value is single input
      *
-     * @param mixed $value
+     * @param string|string[]|DateTimeInterface|DateTimeInterface[] $value
      * @return array
-     * @access private
-     * @static
-     * @since 2.27.14 2019-02-10
+     * @since 2.29.16 2020-01-24
      */
-    private static function checkSingleExdates( $value ) {
-        if( $value instanceof DateTime ) {
+    private static function checkSingleExdates( $value )
+    {
+        if( $value instanceof DateTimeInterface ) {
             return [ $value ];
         }
         if( DateTimeFactory::isStringAndDate( $value )) {
             return [ $value ];
         }
-        if( ! is_array( $value )) {
-            return $value;
-        }
-        $value = array_change_key_case( $value );
-        if( isset( $value[Util::$LCYEAR] ) || isset( $value[Util::$LCTIMESTAMP] )) {
-            return [ $value ];
-        }
-        if( isset( $value[0] ) && isset( $value[1] ) && isset( $value[2] ) &&
-                is_scalar( $value[0] ) && is_scalar( $value[1] ) && is_scalar( $value[2] ) &&
-                DateTimeFactory::isArgsDate( $value[0], $value[1], $value[2] )) {
-            return [ $value ];
-        }
         return $value;
-
     }
 }

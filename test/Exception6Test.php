@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -34,7 +34,7 @@ use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 
 /**
- * class Exception5Test
+ * class Exception6Test
  *
  * Testing exceptions TZOFFSETFROM and TZOFFSETTO
  *
@@ -91,12 +91,7 @@ class Exception6Test extends TestCase
      * @param string|null $value
      * @param array $config
      */
-    public function DateIntervalFactoryTest(
-        $case,
-        $property,
-        $value  = null,
-        $config = []
-    ) {
+    public function DateIntervalFactoryTest(  $case, $property, $value  = null, $config = [] ) {
         $standard = new Standard( $config );
         $method   = $standard::getSetMethodName( $property );
         $ok = false;

@@ -2,10 +2,10 @@
 /**
   * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -30,21 +30,16 @@
 
 namespace Kigkonsult\Icalcreator\Util;
 
-use Kigkonsult\Icalcreator\Vcalendar;
+use Exception;
 use InvalidArgumentException;
+use Kigkonsult\Icalcreator\Vcalendar;
 
 use function clearstatcache;
 use function file_put_contents;
-use function fclose;
 use function filesize;
 use function filter_var;
-use function filemtime;
-use function fopen;
-use function fpassthru;
 use function gzencode;
 use function header;
-use function is_file;
-use function is_readable;
 use function sprintf;
 use function strcasecmp;
 use function strlen;
@@ -52,15 +47,14 @@ use function strpos;
 use function substr;
 use function sys_get_temp_dir;
 use function tempnam;
-use function time;
 use function unlink;
 use function utf8_encode;
 
 /**
- * iCalcreator http support class, also rfc2368 support (iCal cal-address)
+ * iCalcreator http support class
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @since  2.27.8 - 2019-03-17
+ * @since  2.29.15 - 2020-01-19
  */
 class HttpFactory
 {
@@ -88,17 +82,26 @@ class HttpFactory
      * @param bool      $utf8Encode
      * @param bool      $gzip
      * @param bool      $cdType true : Content-Disposition: attachment... (default), false : ...inline...
+     * @param string    $fileName
      * @return bool true on success, false on error
+     * @throws Exception
      * @static
+     * @since  2.29.15 - 2020-01-19
      */
     public static function returnCalendar(
         Vcalendar $calendar,
         $utf8Encode = false,
         $gzip       = false,
-        $cdType     = true
+        $cdType     = true,
+        $fileName   = null
     ) {
         static $ICR = 'iCr';
-        $filename = $calendar->getConfig( Vcalendar::FILENAME );
+        $utf8Encode ?: false;
+        $gzip ?: false;
+        $cdType ?: false;
+        if( empty( $fileName ) ) {
+            $fileName = self::getFakedFilename();
+        }
         $output   = $calendar->createCalendar();
         if( $utf8Encode ) {
             $output = utf8_encode( $output );
@@ -116,59 +119,35 @@ class HttpFactory
                     $fsize = @filesize( $temp );
                 }
                 unlink( $temp );
+                clearstatcache();
             }
-        }
+        } // end else
         if( ! empty( $fsize )) {
             header( sprintf( self::$headers[2], $fsize ));
         }
         header( self::$headers[3] );
         $cdType = ( $cdType ) ? 4 : 5;
-        header( sprintf( self::$headers[$cdType], $filename ));
+        header( sprintf( self::$headers[$cdType], $fileName ));
         header( self::$headers[6] );
         echo $output;
         return true;
     }
 
     /**
-     * If recent version of calendar file exists (default one hour), an HTTP redirect header is sent
+     * Return faked filename
      *
-     * @param Vcalendar $calendar
-     * @param int       $timeout default 3600 sec
-     * @param bool      $cdType  true : Content-Disposition: attachment... (default), false : ...inline...
-     * @return bool true on success, false on error
+     * @return string $propName
+     * @access private
      * @static
+     * @since  2.29.4 - 2019-07-02
      */
-    public static function useCachedCalendar(
-        Vcalendar $calendar,
-        $timeout = 3600,
-        $cdType  = true
-    ) {
-        static $R = 'r';
-        if( false === ( $dirfile = $calendar->getConfig( Vcalendar::URL ))) {
-            $dirfile = $calendar->getConfig( Vcalendar::DIRFILE );
-        }
-        if( ! is_file( $dirfile ) || ! is_readable( $dirfile )) {
-            return false;
-        }
-        if( time() - filemtime( $dirfile ) > $timeout ) {
-            return false;
-        }
-        clearstatcache();
-        $fsize    = @filesize( $dirfile );
-        $filename = $calendar->getConfig( Vcalendar::FILENAME );
-        header( self::$headers[3] );
-        if( ! empty( $fsize )) {
-            header( sprintf( self::$headers[2], $fsize ));
-        }
-        $cdType = ( $cdType ) ? 4 : 5;
-        header( sprintf( self::$headers[$cdType], $filename ));
-        header( self::$headers[6] );
-        if( false === ( $fp = @fopen( $dirfile, $R ))) {
-            return false;
-        }
-        fpassthru( $fp );
-        fclose( $fp );
-        return true;
+    private static function getFakedFilename()
+    {
+        static $DOTICS = '.ics';
+        return date(
+            DateTimeFactory::$YmdHis,
+            intval( microtime( true ))
+            ) . $DOTICS;
     }
 
     /**
@@ -179,12 +158,15 @@ class HttpFactory
      * @static
      * @since  2.27.3 - 2018-12-28
      */
-    public static function assertUrl( $url ) {
+    public static function assertUrl( $url )
+    {
         static $UC   = '_';
         static $URN  = 'urn';
         static $HTTP = 'http://';
-        static $MSG  = 'Validity error #%d for URL value \'%s\'';
-        $url2 = ( false !== strpos( $url, $UC )) ? str_replace( $UC, Util::$MINUS, $url ) : $url;
+        static $MSG  = 'URL validity error #%d, \'%s\'';
+        $url2 = ( false !== strpos( $url, $UC ))
+            ? str_replace( $UC, Util::$MINUS, $url )
+            : $url;
         $no   = 0;
         do {
             if( false !== filter_var( $url2, FILTER_VALIDATE_URL )) {
@@ -204,6 +186,4 @@ class HttpFactory
             throw new InvalidArgumentException( sprintf( $MSG, $no, $url ));
         }
     }
-
-
 }

@@ -2,10 +2,10 @@
 /**
  * iCalcreator, the PHP class package managing iCal (rfc2445/rfc5445) calendar information.
  *
- * copyright (c) 2007-2019 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
+ * copyright (c) 2007-2021 Kjell-Inge Gustafsson, kigkonsult, All rights reserved
  * Link      https://kigkonsult.se
  * Package   iCalcreator
- * Version   2.28
+ * Version   2.30
  * License   Subject matter of licence is the software iCalcreator.
  *           The above copyright, link, package and version notices,
  *           this licence notice and the invariant [rfc5545] PRODID result use
@@ -40,7 +40,7 @@ use InvalidArgumentException;
  * URL property functions
  *
  * @author Kjell-Inge Gustafsson, kigkonsult <ical@kigkonsult.se>
- * @since 2.27.3 2018-12-22
+ * @since 2.29.30 2020-12-07
  */
 trait URLtrait
 {
@@ -55,12 +55,15 @@ trait URLtrait
      *
      * @return string
      */
-    public function createUrl() {
+    public function createUrl()
+    {
         if( empty( $this->url )) {
             return null;
         }
         if( empty( $this->url[Util::$LCvalue] )) {
-            return ( $this->getConfig( self::ALLOWEMPTY )) ? StringFactory::createElement( self::URL ) : null;
+            return $this->getConfig( self::ALLOWEMPTY )
+                ? StringFactory::createElement( self::URL )
+                : null;
         }
         return StringFactory::createElement(
             self::URL,
@@ -75,7 +78,8 @@ trait URLtrait
      * @return bool
      * @since  2.27.1 - 2018-12-15
      */
-    public function deleteUrl() {
+    public function deleteUrl()
+    {
         $this->url = null;
         return true;
     }
@@ -87,7 +91,8 @@ trait URLtrait
      * @return bool|array
      * @since  2.27.1 - 2018-12-12
      */
-    public function getUrl( $inclParam = false ) {
+    public function getUrl( $inclParam = false )
+    {
         if( empty( $this->url )) {
             return false;
         }
@@ -101,17 +106,32 @@ trait URLtrait
      * @param array  $params
      * @return static
      * @throws InvalidArgumentException
-     * @since 2.27.3 2018-12-22
+     * @since 2.29.30 2020-12-07
      */
-    public function setUrl( $value = null, $params = null ) {
+    public function setUrl( $value = null, $params = [] )
+    {
+        static $PFCHARS1 = '%3C';
+        static $SFCHARS1 = '%3E';
+        static $PFCHARS2 = '<';
+        static $SFCHARS2 = '>';
         if( empty( $value )) {
             $this->assertEmptyValue( $value, self::URL );
-            $value  = Util::$SP0;
-            $params = [];
+            $this->url = [
+                Util::$LCvalue  => $value,
+                Util::$LCparams => [],
+            ];
+            return $this;
         }
-        else {
-            HttpFactory::assertUrl( $value );
-        }
+        switch( true ) {
+            case (( $PFCHARS1 == substr( $value, 0, 3 )) &&
+                ( $SFCHARS1 == substr( $value, -3 ))) :
+                $value = substr( $value, 3, -3 );
+                break;
+            case (( $PFCHARS2 == substr( $value, 0, 1 )) &&
+                ( $SFCHARS2 == substr( $value, -1 ))) :
+                $value = substr( $value, 1, -1 );
+        } // end switch
+        HttpFactory::assertUrl( $value );
         $this->url = [
             Util::$LCvalue  => $value,
             Util::$LCparams => ParameterFactory::setParams( $params ),
